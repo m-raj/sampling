@@ -1,0 +1,32 @@
+# Generated datasets and model checkpoints
+data/
+*.pt
+*.pth
+*.npz
+*.npy
+*.pkl
+*.pickle
+*.h5
+*.hdf5
+*.csv
+
+# Generated figures
+figs/
+figures/
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# Python and macOS metadata
+__pycache__/
+*.py[cod]
+.DS_Store
+
+# LaTeX build artifacts
+*.aux
+*.fdb_latexmk
+*.fls
+*.log
+*.out
+*.synctex.gz

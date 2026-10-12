@@ -1,0 +1,1858 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{booktabs}
+\usepackage{mathtools}
+\usepackage{float}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\title{Data Sampling with Ornstein--Uhlenbeck Trajectories and Derived Variables}
+\author{}
+\date{}
+
+
+\begin{document}
+\maketitle
+
+\section{Ornstein--Uhlenbeck process}
+
+The OU process is parameterized by
+\begin{equation}
+    dX_t = \theta(\mu-X_t)\,dt + \sigma\,dW_t,
+\end{equation}
+where $\theta \geq 0$ is the mean-reversion rate, $\mu$ is the long-run mean,
+$\sigma \geq 0$ is the diffusion coefficient, and $X_0=x_0$ is the initial
+value. The OU trajectories can be sampled using the Euler--Maruyama method,
+which uses the Euler--Maruyama update
+\begin{equation}
+    X_{n+1}=X_n+\theta(\mu-X_n)\Delta t
+    +\sigma\sqrt{\Delta t}\,Z_n,
+    \qquad Z_n\sim\mathcal{N}(0,1).
+\end{equation}
+The exact solution of the SDE, obtained with an integrating factor (detailed in Appendix \ref{a:sec:ou-solution}), is
+\begin{equation}
+    X_t=\mu+(x_0-\mu)e^{-\theta t}
+    +\sigma\int_0^t e^{-\theta(t-s)}\,dW_s.
+\end{equation}
+In particular, its conditional distribution is Gaussian with
+\begin{align}
+    \mathbb{E}[X_t\mid X_0=x_0]
+     & =\mu+(x_0-\mu)e^{-\theta t},                           \\
+    \operatorname{Var}(X_t\mid X_0=x_0)
+     & =\frac{\sigma^2}{2\theta}\bigl(1-e^{-2\theta t}\bigr),
+    \qquad \theta>0.
+\end{align}
+\section{Linear Constitutive Relation}
+\begin{align}
+    \dot{\xi}(t) & = \varepsilon(t)-2\xi(t), & \xi(0) & =0, \\
+    \sigma(t)    & = \varepsilon(t)-\xi(t).
+\end{align}
+The above constiutive relation corresponds to a quadratic energy and a quadratic dissipation functions. Thecontinuous-time solution for the first equation is
+\begin{equation}
+    \xi(t)=\int_0^t \exp\bigl(-2(t-s)\bigr)\varepsilon(s)\,ds.
+\end{equation}
+The ODE can be numerically solved using a numerical scheme such as the forward Euler method.
+\begin{equation}
+    \xi_{n+1}=\xi_n+\Delta t\bigl(\varepsilon_n-2\xi_n\bigr),
+    \qquad \xi_0=0,
+\end{equation}
+where $\varepsilon_n=\varepsilon(t_n)$ and $t_{n+1}=t_n+\Delta t$.
+
+\section{Joint steady-state distribution of \texorpdfstring{$\varepsilon(t)$}{epsilon(t)} and \texorpdfstring{$\xi(t)$}{xi(t)}}
+
+The strain $\varepsilon(t)$ is modeled as an OU process, and the derived variable $\xi(t)$ is defined by a linear ODE driven by $\varepsilon(t)$. In this section, we derive the ODEs for the mean and variance of the joint distribution $(\varepsilon, \xi)$. We can analyze the joint steady-state distribution of $(\varepsilon(t),\xi(t))$ by considering the coupled SDE--ODE system as follows:
+\begin{align}
+    d\varepsilon_t & = \theta(\mu-\varepsilon_t)\,dt+\sigma\,dW_t, \qquad \varepsilon_0 = 0, \\
+    d\xi_t         & = (\varepsilon_t-2\xi_t)\,dt, \qquad \xi_0=0.
+\end{align}
+We define a vector-valued process $Z_t=(\varepsilon_t,\xi_t)^\top$ and write the system in matrix form:
+\begin{equation}
+    dZ_t=
+    \left[
+        \begin{pmatrix}
+            -\theta & 0  \\
+            1       & -2
+        \end{pmatrix}Z_t+
+        \begin{pmatrix}
+            \theta\mu \\
+            0
+        \end{pmatrix}
+        \right]dt+
+    \begin{pmatrix}
+        \sigma \\
+        0
+    \end{pmatrix}dW_t.
+\end{equation}
+The above system can be written in abstract from as
+\begin{equation}
+    dZ_t=(-AZ_t+b)\,dt+G\,dW_t,
+\end{equation}
+where $A = \begin{pmatrix}\theta & 0 \\ -1 & 2\end{pmatrix}$, $b=\begin{pmatrix}\theta\mu \\ 0\end{pmatrix}$, and $G=\begin{pmatrix}\sigma \\ 0\end{pmatrix}$. The system can be solved using a different method that bypasses the matrix exponential, as detailed in Appendix \ref{a:sec:alternative_ou_solution}. The initial condition is $Z_0=(0,0)^\top$. The system can be solved using the integrating factor $e^{At}$,
+\begin{equation}
+    Z_t=e^{-At}Z_0+\int_0^t e^{-A(t-s)}b\,ds
+    +\int_0^t e^{-A(t-s)}G\,dW_s.
+\end{equation}
+Substituting intitial conditions $Z_0=(0,0)^\top$ and integrating the deterministic term gives
+\begin{equation}
+    Z_t=  A^{-1}(I-e^{-At})b
+    +\int_0^t e^{-A(t-s)}G\,dW_s.
+\end{equation}
+
+
+
+
+% Because this is a linear system driven by Brownian motion, $\varepsilon(t)$ and
+% $\xi(t)$ have a jointly Gaussian steady-state distribution. Using the
+% ordering $(\varepsilon,\xi)$, one obtains
+% \begin{equation}
+%     \begin{pmatrix} \varepsilon \\ \xi \end{pmatrix}
+%     \sim
+%     \mathcal{N}\!\left(
+Let
+\begin{equation}
+    m(t)=\mathbb{E}[Z_t].
+\end{equation}
+Taking expectations in equation (10), and using
+\begin{equation}
+    \mathbb{E}[dW_t]=0,
+\end{equation}
+gives the deterministic ODE governing the mean:
+\begin{equation}
+    \frac{d}{dt}m(t)=-A m(t)+b,
+    \qquad m(0)=\mathbb{E}[Z_0].
+\end{equation}
+For $Z_0=(0,0)^\top$, the solution for the (18) is
+\begin{equation}
+    m(t)=A^{-1}\bigl(I-e^{-At}\bigr)b,
+\end{equation}
+which is the deterministic part of equation (15). In component form,
+\begin{align}
+    \mathbb{E}[\varepsilon_t]
+     & =\mu\bigl(1-e^{-\theta t}\bigr),    \\
+    \mathbb{E}[\xi_t]
+     & =\frac{\mu}{2}\bigl(1-e^{-2t}\bigr)
+    -\frac{\mu}{2-\theta}
+    \bigl(e^{-\theta t}-e^{-2t}\bigr),
+    \qquad \theta\ne2.
+\end{align}
+To obtain the second moment, define
+\begin{equation}
+    M(t)=\mathbb{E}\left[Z_tZ_t^\top\right].
+\end{equation}
+Applying It\^o's product rule to $Z_tZ_t^\top$ gives
+\begin{equation}
+    \frac{d}{dt}M(t)
+    =-A M(t)-M(t)A^\top
+    +b\,m(t)^\top+m(t)b^\top+GG^\top,
+    \qquad M(0)=\mathbb{E}[Z_0Z_0^\top].
+\end{equation}
+The covariance matrix is obtained from the second moment by
+\begin{equation}
+    C(t)=\operatorname{Cov}(Z_t)=M(t)-m(t)m(t)^\top.
+\end{equation}
+Using the mean equation, its ODE simplifies to
+\begin{equation}
+    \frac{d}{dt}C(t)=-A C(t)-C(t)A^\top+GG^\top,
+    \qquad C(0)=\operatorname{Cov}(Z_0).
+\end{equation}
+The matrix solution of the covariance equation is
+\begin{equation}
+    C(t)=e^{-At}C(0)e^{-A^\top t}
+    +\int_0^t e^{-A(t-s)}GG^\top e^{-A^\top(t-s)}\,ds.
+\end{equation}
+For a stable drift matrix $A$, the steady-state covariance is obtained by
+taking $t\to\infty$:
+\begin{equation}
+    C_\infty=\int_0^\infty e^{-As}GG^\top e^{-A^\top s}\,ds.
+\end{equation}
+For the deterministic initial condition $C(0)=0$, the covariance evolution is
+therefore fully specified by the matrix integral above, without expanding
+$A$, $b$, or $G$ into their individual entries. However, the steady state covariance matrix is easier to compute using the following equation
+\begin{equation}
+    AC_\infty+C_\infty A^\top=GG^\top.
+\end{equation}
+The complete steady-state
+covariance matrix may then be written as
+\begin{equation}
+    C_\infty
+    =\frac{\sigma^2}{4\theta(\theta+2)}
+    \begin{pmatrix}
+        2(\theta+2) & 2 \\
+        2           & 1
+    \end{pmatrix}.
+\end{equation}
+The eigenvalues of $C_\infty$ are found to be
+\begin{equation}
+    \lambda_{\pm}
+    =\frac{\sigma^2}{8\theta(\theta+2)}
+    \left[2\theta+5
+        \pm\sqrt{(2\theta+3)^2+16}\right],
+    \qquad \lambda_+\geq\lambda_-.
+\end{equation}
+The eigenvector angle satisfies (can be computed using Mohr's circle)
+\begin{equation}
+    \tan(2\phi)
+    =\frac{2C_{12}^\infty}{C_{11}^\infty-C_{22}^\infty}
+    =\frac{4}{2\theta+3},
+    \qquad
+    \phi=\frac{1}{2}\arctan\left(\frac{4}{2\theta+3}\right).
+\end{equation}
+An orthonormal pair of principal directions is
+\begin{equation}
+    v_+=\begin{pmatrix}\cos\phi\\\sin\phi\end{pmatrix},
+    \qquad
+    v_- =\begin{pmatrix}-\sin\phi\\\cos\phi\end{pmatrix},
+\end{equation}
+The determinant of the steady-state covariance matrix is
+\begin{equation}
+    \det(C_\infty)
+    =\left[\frac{\sigma^2}{4\theta(\theta+2)}\right]^2
+    \det\begin{pmatrix}2(\theta+2)&2\\2&1\end{pmatrix}
+    =\left[\frac{\sigma^2}{4\theta(\theta+2)}\right]^2
+    \left(2(\theta+2)-4\right)
+    =\frac{\sigma^4}{8\theta(\theta+2)^2}
+    \equiv J.
+\end{equation}
+The total steady-state variance of $(\varepsilon,\xi)$ is the trace of the covariance matrix, equivalently the sum of its principal values:
+\begin{equation}
+    \operatorname{Var}_{\mathrm{total}}(\varepsilon,\xi)
+    =\operatorname{tr}(C_\infty)
+    =\lambda_++\lambda_-
+    =\frac{\sigma^2(2\theta+5)}{4\theta(\theta+2)}
+    =\frac{2\theta+5}{\sqrt{2\theta}}\sqrt{J},
+    \qquad \theta>0.
+\end{equation}
+We want to check if for any value of $\theta$ and $\sigma$, the eigenvalues are equal. It is noted that for $\theta,\sigma>0$, the difference between the principal values is
+\begin{equation}
+    \Delta\lambda(\theta, \sigma)=\lambda_+-\lambda_-
+    =\frac{\sigma^2}{4\theta(\theta+2)}
+    \sqrt{(2\theta+3)^2+16}
+    =\frac{\sqrt{(2\theta+3)^2+16}}{\sqrt{2\theta}}\sqrt{J}.
+\end{equation}
+
+
+A sampling objective could be to maximize $\operatorname{Var}(\varepsilon,\xi )$ while simultaneously minimizing $\Delta\lambda(\theta, \sigma)$ for isotropy.
+% To determine its minimum for real $\theta>0$, consider its square. Apart from
+% the positive constant $\sigma^4/16$, it is proportional to
+% \begin{equation}
+%     h(\theta)=\frac{4\theta^2+12\theta+25}
+%     {\theta^2(\theta+2)^2}.
+% \end{equation}
+% Its derivative is
+% \begin{equation}
+%     h'(\theta)=
+%     -\frac{8\theta^3+36\theta^2+124\theta+100}
+%     {\theta^3(\theta+2)^3}<0,
+%     \qquad \theta>0.
+% \end{equation}
+
+% Therefore, $\Delta\lambda(\theta)$ is strictly decreasing for $\theta>0$, and it can observed that $\Delta \lambda(\sigma)$ is also strictly decreasing for $\sigma>0$. Hence, $\Delta \lambda$ could be made arbirarily small by increasing $\theta$ and decreasing $\sigma$.
+
+%     \begin{pmatrix} \mu \\ \mu/2 \end{pmatrix},
+%     \begin{pmatrix}
+%             \dfrac{\sigma^2}{2\theta}
+%              & \dfrac{\sigma^2}{2\theta(\theta+2)} \\
+%             \dfrac{\sigma^2}{2\theta(\theta+2)}
+%              & \dfrac{\sigma^2}{4\theta(\theta+2)}
+%         \end{pmatrix}
+%     \right),
+%     \qquad \theta>0.
+% \end{equation}
+% In particular,
+% \begin{align}
+%     \operatorname{Var}(\varepsilon)     & = \frac{\sigma^2}{2\theta},           \\
+%     \operatorname{Cov}(\varepsilon,\xi) & = \frac{\sigma^2}{2\theta(\theta+2)}, \\
+%     \operatorname{Var}(\xi)             & = \frac{\sigma^2}{4\theta(\theta+2)}.
+% \end{align}
+% The corresponding correlation is
+% \begin{equation}
+%     \operatorname{Corr}(\varepsilon,\xi)=\sqrt{\frac{2}{\theta+2}}.
+% \end{equation}
+
+\subsection{Optimal $\sigma$ and $\theta$}
+
+In this section, we determine the optimal value of $\theta$ and $\sigma$ while fixing the determinant $J$ of the covariance matrix. The total steady-state variance and the eigenvalue can be written in terms of the determinant as
+\begin{align}
+    \operatorname{Var}_{\mathrm{total}}(\sigma,\theta)
+     & =\frac{2\theta+5}{\sqrt{2\theta}}\sqrt{J},
+    \qquad \theta>0.,                                           \\
+    \Delta\lambda(\sigma,\theta)
+     & =\frac{\sqrt{(2\theta+3)^2+16}}{\sqrt{2\theta}}\sqrt{J}.
+\end{align}
+We could optimize $\operatorname{Var}$ and $\Delta \lambda$ for fixed determinant. We observe that both $\operatorname{Var}$ and $\Delta \lambda$ attain minimum in terms of $\theta$, for fixed determinant. Minimum $\Delta \lambda$ is desired for isotropy.
+
+For fixed determinant, $\Delta \lambda$ is minimized at $\theta_* = 5/2 $. This gives $\sigma_* = 3(5J)^{1/4}$. At the optimal value of $\theta = \theta_*$,
+\begin{equation}
+    \operatorname{Var}_{\mathrm{total}}(\sigma_*,\theta_*)
+    =2\sqrt{5J},
+    \qquad
+    \Delta\lambda(\sigma_*,\theta_*)
+    =4\sqrt{J}.
+\end{equation}
+\section{Effect of the Non-identifiability of the Internal Variables}
+In one-dimension, the internal variables can be scaled without changing the stress-strain relationship. Hence, let $\xi = (1/\beta)\eta$. Hence, this scaling can be taking into account by defining
+\begin{align}
+    \widetilde{Z}_t =\begin{bmatrix} 1 & 0     \\
+                0 & \beta\end{bmatrix} Z_t,\qquad B \equiv \begin{bmatrix} 1 & 0     \\
+                0 & \beta\end{bmatrix}.
+\end{align}
+where $\widetilde{Z}_t = (\varepsilon_t, \eta_t)^\top$. Hence, the steady state mean and covariance of $\widetilde{Z}$ are
+\begin{align}
+    \widetilde{m}_\infty
+     & =B m_\infty = B A^{-1}b = \begin{pmatrix}\mu \\ \beta\mu/2\end{pmatrix},
+    \\
+    \widetilde{C}_\infty
+     & = B C_\infty B^\top = \frac{\sigma^2}{4\theta(\theta+2)}
+    \begin{pmatrix}
+        2(\theta+2) & 2 \\
+        2           & 1
+    \end{pmatrix} =\frac{\sigma^2}{4\theta(\theta+2)}
+    \begin{pmatrix}
+        2(\theta+2) & 2\beta  \\
+        2\beta      & \beta^2
+    \end{pmatrix}.
+\end{align}
+Hence,
+the determinant of the covariance matrix is
+\begin{equation}
+    \det(\widetilde{C}_\infty)
+    =\det(B)\det(C_\infty)\det(B^\top) = \frac{\sigma^4 \beta^2}{8\theta(\theta+2)^2}=\beta^2 J \equiv \widetilde{J}.
+\end{equation}
+The variance is
+\begin{equation}
+    \widetilde{\operatorname{Var}}_{\mathrm{total}}
+    =\operatorname{tr}(\widetilde{C}_\infty)
+    =\frac{\sigma^2(2\theta+4 + \beta^2)}{4\theta(\theta+2)}
+    =\frac{2\theta+4 + \beta^2}{\sqrt{2\theta} \beta}\sqrt{\widetilde{J}}
+    =\frac{2\theta+4 + \beta^2}{\sqrt{2\theta}}\sqrt{{J}}
+\end{equation}
+The difference in eigenvalues is
+\begin{equation}
+    \widetilde{\Delta\lambda}(\sigma,\theta)
+    =\frac{\sigma^2}{4\theta(\theta+2)}
+    \sqrt{\bigl(2\theta+4-\beta^2\bigr)^2+16\beta^2}
+    =\frac{\sqrt{\bigl(2\theta+4-\beta^2\bigr)^2+16\beta^2}}
+    {\sqrt{2\theta}}\sqrt{J}.
+\end{equation}
+\subsection{Regularization to Uniquely Identify Internal Variables}
+We define a regularization term that is added to the loss function to fix the identifiability of the internal variable. The regularization term is defined as
+\begin{equation}
+    \mathcal{L}_{\mathrm{reg}} = (\operatorname{Var}(\xi) - \gamma)^2.
+\end{equation}
+The stationary point of the regularization term is
+\begin{equation}
+    \gamma = \dfrac{\sigma^2}{4\theta(\theta+2)}\beta^2.\\
+\end{equation}
+The above equation does not distinguish between the sign of $\beta$ or rotation in higher dimension. Hence, we regularize using the covariance instead of the variance.
+\begin{equation}
+    \mathcal{L}_{\mathrm{reg}} = (\operatorname{Cov}(\varepsilon,\xi) - \gamma)^2.
+\end{equation}
+Hence, the stationary point of the regularization term is
+\begin{equation}
+    \gamma = \dfrac{\sigma^2}{2\theta(\theta+2
+        )}\beta^2.
+\end{equation}
+The regularization can also be done using the steady state mean of internal variable. The regularization term is defined as
+\begin{equation}
+    \mathcal{L}_{\mathrm{reg}} = (\mathbb{E}[\xi] - \gamma)^2.
+\end{equation}
+The stationary point of the regularization term is
+\begin{equation}
+    \gamma = \dfrac{\mu}{2}\beta,\qquad \mu \neq 0.
+\end{equation}
+
+Moreover, the mean regularization leads to a unique $\beta$ in one-dimensional setting, however, it does not guarantee uniqueness in higher dimensions as the linear system is overdetermined.
+\section{Numerical Results - 1D}
+We generate strain samples using OU process using the following parameters:
+\begin{align}
+    \theta & = 10.0, \\
+    \mu    & = 1.0,  \\
+    \sigma & = 0.3,  \\
+    x_0    & = 0.0,  \\
+    T      & = 3.0,  \\
+    dt     & = 0.01.
+\end{align}
+The following figure shows a few samples of the strain trajectories. High mean reversion leads to trajectories quickly reaching the invariant measure. Hence, emprical statistics computed using time averages will converge faster to the true steady state statistics. However, high theta could be also be undesired as it along with high sigma could lead to overly rapid fluctuations in the strain trajectories. Long time to reach steady state statistics poses challenges to optimization as barackpropagation would need to track all time steps. A way around that could be the use of adjoint method. The following figure shows a few sample of the strain.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{figs/oned-strain-samples.pdf}
+    \caption{Sample strain trajectories for the one-dimensional Ornstein--Uhlenbeck process.}
+\end{figure}
+\subsection{Learning without Regularization}
+The following figure shows the comparison between the true and learned stress and internal variable trajectories without regularization. It is observed that the predicted stress trajectories match the true stress trajectories, while the internal variable trajectories do not match the true internal variable trajectories.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{figs/internal_variable_comparison.pdf}
+    \caption{It is observed that the stress trajectories are matching the true stress trajectory. However, internal variable trajectories are not matching the true internal variable trajectories.}
+\end{figure}
+\subsection{Mean Regularization Method}
+In this section, we present the results corresponding to mean regularization method. For that purpose, we need to compute the empirical mean of internal variables. The following average will lead to a biased estimate if the trajectory is not sufficiently long.
+\begin{equation}
+    \bar{\xi} = \dfrac{1}{T}\int_0^T \xi_t \, dt,
+\end{equation}
+where $T$ is the total observation time and $\xi_t$ represents the internal variable at time $t$. We set the target mean to be half of the true mean of the internal variable. We observe the trajectories to saturate around this target mean. The regularization is done by adding an additional term to the loss function as penalty for deviating from the target mean. The method was observed to converge to the desired solution. However, the mean regularization method will fail in higher dimension due to the underdetermined system of linear equation $A\bar{\xi} = b$, where $A$ is to be determined and $b$ is the target mean vector.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{figs/internal_variable_comparison_mean_regularization.pdf}
+    \caption{Comparision of internal variables for the mean regularization method.}
+\end{figure}
+
+\subsection{Varianace Regularization}
+
+We do not know if the regularized optimization problem is convex. Particularly in the case of covariance regularization, it is observed that the optimization does not converge to the desired solution.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{figs/internal_variable_comparison_variance_regularization.pdf}
+    \caption{Comparision of internal variables for the variance regularization method.}
+\end{figure}
+
+Variance regularization also seem to numerically work. Even though the variance requlariation method could potentially have two solutions, it seems to converage to the positive solution in the three trials. However, it is observed that the method has not fully converged in one of the cases.
+
+\subsection{Covariance Regularization}
+It seems covariance regularization is highly non-convex. We observe that although predicted stress trajectories are close to the true stress trajectories, the predicted internal variable trajectories do not converge to desired trajectories. It appears the the model is fitting to the covariance by actually making the internal variables similar to strain rather than just scaling the internal variables. The cost that is paid in inaccurate stress prediction does not seem to be significant to discard undesirable trajectories of internal variables.
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.65\textwidth]{figs/internal_variable_comparison_covariance_regularization.pdf}
+    \caption{Comparision of internal variables for the covariance regularization method.}
+\end{figure}
+
+\section{Nonlinear Constitutive Relations}
+Suppose that the dynamics of $\xi(t)$ are nonlinear. The coupled process can
+then be written as
+\begin{align}
+    d\varepsilon_t & = \theta(\mu-\varepsilon_t)\,dt+\sigma\,dW_t, \\
+    d\xi_t         & = F(\varepsilon_t,\xi_t)\,dt,
+\end{align}
+where $F$ is a nonlinear function governing the dynamics of $\xi(t)$.
+The pair $(\varepsilon_t,\xi_t)$ remains a Markov process, but it is generally not
+jointly Gaussian because nonlinear transformations do not preserve Gaussianity. For numerical simulation, an Euler--Maruyama discretization is
+\begin{align}
+    \varepsilon_{n+1} & = \varepsilon_n+\theta(\mu-\varepsilon_n)\Delta t
+    +\sigma\sqrt{\Delta t}\,Z_n,                                          \\
+    \xi_{n+1}         & = \xi_n+F(\varepsilon_n,\xi_n)\Delta t,
+    \qquad Z_n\sim\mathcal{N}(0,1).
+\end{align}
+The stationary joint density $p(\varepsilon,\xi)$ satisfies the stationary
+Fokker--Planck equation
+\begin{equation}
+    0=-\frac{\partial}{\partial \varepsilon}
+    \left[\theta(\mu-\varepsilon)p(\varepsilon,\xi)\right]
+    -\frac{\partial}{\partial \xi}
+    \left[F(\varepsilon,\xi)p(\varepsilon,\xi)\right]
+    +\frac{\sigma^2}{2}\frac{\partial^2p(\varepsilon,\xi)}{\partial \varepsilon^2}.
+\end{equation}
+
+For a general nonlinear $F$, this equation does not usually have a closed-form
+solution. The steady-state distribution can instead be estimated by simulating
+a sufficiently long trajectory, discarding an initial burn-in period, and
+constructing a histogram or kernel-density estimate from the remaining pairs
+$(\varepsilon_n,\xi_n)$. Alternatively, the stationary Fokker--Planck equation can be
+solved numerically, or its moments can be approximated using a moment-closure
+method.
+
+\subsection{Power-law nonlinear constitutive relation}
+In modeling of material behavior, power-law nonlinearity for the evolution of the dynamics of $\xi_t$ is often employed to capture strain-rate dependence. Hence, we define
+\begin{equation}
+    F(\varepsilon,\xi)
+    =\left|\varepsilon-2\xi\right|^{1/n}
+    \operatorname{sign}\bigl(\varepsilon-2\xi\bigr),
+    \qquad n>0,
+\end{equation}
+where $\operatorname{sign}(0)=0$. Note that as $n\to 0$, the material's response becomes less and less sensitive to strain rate, and becoming rate-independent for $n=0$. The corresponding dynamics of $\xi(t)$ are
+\begin{equation}
+    \dot{\xi}(t)
+    =\left|\varepsilon(t)-2\xi(t)\right|^{1/n}
+    \operatorname{sign}\bigl(\varepsilon(t)-2\xi(t)\bigr),
+    \qquad \xi(0)=0.
+\end{equation}
+With this choice of $F$, the stationary Fokker--Planck equation becomes
+\begin{equation}
+    0=-\frac{\partial}{\partial\varepsilon}
+    \left[\theta(\mu-\varepsilon)p(\varepsilon,\xi)\right]
+    -\frac{\partial}{\partial\xi}
+    \left[
+    |\varepsilon-2\xi|^{1/n}
+    \operatorname{sign}(\varepsilon-2\xi)
+    p(\varepsilon,\xi)
+    \right]
+    +\frac{\sigma^2}{2}
+    \frac{\partial^2p(\varepsilon,\xi)}{\partial\varepsilon^2}.
+\end{equation}
+
+% To analyze the nonlinear restoring mechanism, introduce
+% \begin{equation}
+%     y=\varepsilon-2\xi.
+% \end{equation}
+% Since $d\xi_t=|y_t|^{1/n}\operatorname{sign}(y_t)dt$, It\^o's formula gives
+% \begin{equation}
+%     dy_t=\left[\theta(\mu-\varepsilon_t)
+%     -2|y_t|^{1/n}\operatorname{sign}(y_t)\right]dt
+%     +\sigma\,dW_t.
+% \end{equation}
+% The second term is restoring: it has the opposite sign to $y_t$ and drives
+% $\xi_t$ toward the instantaneous relation $\xi_t=\varepsilon_t/2$.
+% Although the joint density is generally not available in closed form, the
+% stationary marginal of $\varepsilon$ is unchanged because its dynamics remain
+% OU:
+% \begin{equation}
+%     p_\varepsilon^{\mathrm{ss}}(\varepsilon)
+%     =\sqrt{\frac{\theta}{\pi\sigma^2}}
+%     \exp\left[-\frac{\theta(\varepsilon-\mu)^2}{\sigma^2}\right].
+% \end{equation}
+% Integrating the stationary $\xi$-equation over the stationary distribution gives
+% the moment balance
+% \begin{equation}
+%     \mathbb{E}_{\mathrm{ss}}\left[
+%     |\varepsilon-2\xi|^{1/n}
+%     \operatorname{sign}(\varepsilon-2\xi)
+%     \right]=0.
+% \end{equation}
+% This identity determines a stationary balance but does not, by itself,
+% determine the full joint density. In practice, the density and higher moments
+% can be obtained by solving the specialized Fokker--Planck equation numerically
+% or by long-run simulation after discarding a burn-in period.
+\section{Multi-dimensional strain and OU process}
+Consider the following constitutive relation for a multi-dimensional strain and multidimensional internal variable:
+\begin{align}
+    \dot{\xi}(t) & = PF(t) - Q\xi(t), & \xi(0) & =0, \\
+    \sigma(t)    & = MF(t) + N\xi(t).
+\end{align}
+where $\xi \in \mathbb{R}^n$ is the set of internal variables, $F \in \mathbb{R}^m$ is the strain, $P \in \mathbb{R}^{n \times m}, Q \in \mathbb{R}^{n \times n}, M \in \mathbb{R}^{m \times m}, N \in \mathbb{R}^{m \times n}$ are matrices of appropriate dimensions. The OU process to sample the strain is given by
+\begin{equation}
+    dF_t = \Theta(\mu-F_t)\,dt + \Sigma\,dW_t,\qquad F_0 = f_0,
+\end{equation}
+where $\Theta \in \mathbb{R}^{m \times m}$ is the mean-reversion rate, $\mu \in \mathbb{R}^m$ is the long-run mean, $\Sigma \in \mathbb{R}^{m \times m}$ is the diffusion coefficient, and $F_0=f_0$ is the initial value, and $dW_t \in \mathbb{R}^m$ is the Wiener process. The evolution equation of the internal variable and the strain can be written in matrix form as
+\begin{align}
+    dF_t   & = \Theta(\mu-F_t)\,dt + \Sigma\,dW_t,\qquad F_0 = f_0, \\
+    d\xi_t & = PF_t - Q\xi_t\,dt,\qquad \xi_0 = 0.
+\end{align}
+Let $Z_t = (F_t, \xi_t)^\top \in \mathbb{R}^{m+n}$ be the vector of strain and internal variables. The coupled system can be written in matrix form as
+\begin{equation}
+    dZ_t = \underbrace{\begin{pmatrix}
+            -\Theta & 0  \\
+            P       & -Q
+        \end{pmatrix}}_{-A}Z_t\,dt
+    +\underbrace{\begin{pmatrix}
+            \Theta\mu \\
+            0
+        \end{pmatrix}}_{b}dt
+    +\underbrace{\begin{pmatrix}
+            \Sigma \\
+            0
+        \end{pmatrix}}_{G}dW_t.
+\end{equation}
+The steady state mean of the coupled system is given by
+\begin{equation}
+    \mathbb{E}[Z_t] \to A^{-1}b.
+\end{equation}
+Inverse of the block matrix $A$ is given by
+\begin{equation}
+    A^{-1} = \begin{pmatrix}
+        \Theta^{-1}        & 0      \\
+        Q^{-1}P\Theta^{-1} & Q^{-1}
+    \end{pmatrix}.
+\end{equation}
+From Appendix \ref{a:sec-vec-ou-solution}, the steady state mean, $m_t = \mathbb{E}[Z_t]$, of the coupled system is given by
+\begin{align}
+    m_\infty & = \begin{pmatrix}
+                     \Theta^{-1}        & 0      \\
+                     Q^{-1}P\Theta^{-1} & Q^{-1}
+                 \end{pmatrix}
+    \begin{pmatrix}
+        \Theta\mu \\
+        0
+    \end{pmatrix}              = \begin{pmatrix}
+                                     \mu \\
+                                     Q^{-1}P\mu
+                                 \end{pmatrix}.
+\end{align}
+The steady state covariance of the coupled system are given by equations (the following equation is called Sylvester equation, often arising in control theory):
+\begin{align}
+    AC_\infty
+    +C_\infty
+    A^\top
+     & =GG^\top.
+\end{align}
+Now, a linear transform of the internal variables can be defined as
+\begin{equation}
+    \widetilde{Z}_t = \underbrace{\begin{pmatrix}
+            I & 0 \\
+            0 & B
+        \end{pmatrix}}_{T}Z_t,
+\end{equation}
+where $B \in \mathbb{R}^{n \times n}$.
+The steady state mean of $\widetilde{Z}_t$ is given by
+\begin{equation}
+    \widetilde{m}_\infty = T m_\infty  = \begin{pmatrix}
+        \mu \\
+        BQ^{-1}P\mu
+    \end{pmatrix}.
+\end{equation}
+The covariance of $\widetilde{Z}_t$ and $Z_t$ are related by
+\begin{equation}
+    \widetilde{C}_\infty = TC_\infty
+    T^\top.
+\end{equation}
+Hence, the steady state covariance of the transformed system is given by
+\begin{equation}
+    AT^{-1}\widetilde{C}_\infty T^{-\top} \
+    +T^{-1}\widetilde{C}_\infty T^{-\top} A^{\top}
+    =G
+\end{equation}
+\begin{equation}
+    TAT^{-\top}\widetilde{C}_\infty + \widetilde{C}_\infty T^{-1}A^{\top}T^{\top} = TGT^\top.
+\end{equation}
+Substituting the expressions for $T$, $A$, and $G$ gives
+\begin{equation}
+    \underbrace{\begin{pmatrix}
+            \Theta & 0        \\
+            -BP    & BQB^{-1}
+        \end{pmatrix}}_{\widetilde{A}}\widetilde{C}_\infty
+    +\widetilde{C}_\infty
+    \begin{pmatrix}
+        \Theta^{\top} & -P^\top B^{\top}       \\
+        0             & B^{-\top}Q^\top B^\top
+    \end{pmatrix}
+    =\begin{pmatrix}
+        \Sigma\Sigma^\top & 0 \\
+        0                 & 0
+    \end{pmatrix}.
+\end{equation}
+Hence, we have
+\begin{equation}
+    \begin{pmatrix}
+        \widetilde{A}_{11} & 0                  \\
+        \widetilde{A}_{21} & \widetilde{A}_{22}
+    \end{pmatrix}
+    \begin{pmatrix}
+        \widetilde{C}_{11} & \widetilde{C}_{12} \\
+        \widetilde{C}_{21} & \widetilde{C}_{22}
+    \end{pmatrix}
+    +\begin{pmatrix}
+        \widetilde{C}_{11} & \widetilde{C}_{12} \\
+        \widetilde{C}_{21} & \widetilde{C}_{22}
+    \end{pmatrix}
+    \begin{pmatrix}
+        \widetilde{A}_{11}^\top & \widetilde{A}_{21}^\top \\
+        0                       & \widetilde{A}_{22}^\top
+    \end{pmatrix}
+    =\begin{pmatrix}
+        \Sigma\Sigma^\top & 0 \\
+        0                 & 0
+    \end{pmatrix}.
+\end{equation}
+Equating the four blocks gives
+\begin{align}
+    \widetilde{A}_{11}\widetilde{C}_{11}
+    +\widetilde{C}_{11}\widetilde{A}_{11}^{\top}
+     & =\Sigma\Sigma^{\top}, \\
+    \widetilde{A}_{11}\widetilde{C}_{12}
+    +\widetilde{C}_{11}\widetilde{A}_{21}^{\top}
+    +\widetilde{C}_{12}\widetilde{A}_{22}^{\top}
+     & =0,                   \\
+    \widetilde{A}_{21}\widetilde{C}_{11}
+    +\widetilde{A}_{22}\widetilde{C}_{21}
+    +\widetilde{C}_{21}\widetilde{A}_{11}^{\top}
+     & =0,                   \\
+    \widetilde{A}_{21}\widetilde{C}_{12}
+    +\widetilde{A}_{22}\widetilde{C}_{22}
+    +\widetilde{C}_{21}\widetilde{A}_{21}^{\top}
+    +\widetilde{C}_{22}\widetilde{A}_{22}^{\top}
+     & =0.
+\end{align}
+We note that the two equations arsing from the two offdiagonal terms are the same. Hence, we have
+\begin{align}
+    \widetilde{A}_{11}\widetilde{C}_{11}
+    +\widetilde{C}_{11}\widetilde{A}_{11}^{\top}
+     & =\Sigma\Sigma^{\top},                          \\
+    \widetilde{A}_{22}\widetilde{C}_{21}
+    +\widetilde{C}_{21}\widetilde{A}_{11}^{\top}
+     & = -\widetilde{A}_{21}\widetilde{C}_{11},       \\
+    \widetilde{A}_{22}\widetilde{C}_{22}
+    +\widetilde{C}_{22}\widetilde{A}_{22}^{\top}
+     & = -\widetilde{A}_{21}\widetilde{C}_{21}^{\top}
+    -\widetilde{C}_{21}\widetilde{A}_{21}^{\top}.
+\end{align}
+Let $\operatorname{vec}(X)$ denote column-wise vectorization, and let
+$K_{n,m}$ be the commutation matrix satisfying
+$\operatorname{vec}(X^{\top})=K_{n,m}\operatorname{vec}(X)$ for
+$X\in\mathbb{R}^{n\times m}$. Using
+$\operatorname{vec}(AXB)=(B^{\top}\otimes A)\operatorname{vec}(X)$,
+the three equations have the solutions
+\begin{align}
+    \operatorname{vec}(\widetilde{C}_{11})
+     & =\left(I_m\otimes\widetilde{A}_{11}
+    +\widetilde{A}_{11}\otimes I_m\right)^{-1}
+    \operatorname{vec}(\Sigma\Sigma^{\top}), \\
+    \operatorname{vec}(\widetilde{C}_{21})
+     & =-\left(I_m\otimes\widetilde{A}_{22}
+    +\widetilde{A}_{11}\otimes I_n\right)^{-1}
+    (I_m\otimes\widetilde{A}_{21})
+    \operatorname{vec}(\widetilde{C}_{11}),  \\
+    \operatorname{vec}(\widetilde{C}_{22})
+     & =-\left(I_n\otimes\widetilde{A}_{22}
+    +\widetilde{A}_{22}\otimes I_n\right)^{-1}
+    \left[(I_n\otimes\widetilde{A}_{21})K_{n,m}
+        +(\widetilde{A}_{21}\otimes I_n)\right]
+    \operatorname{vec}(\widetilde{C}_{21}).
+\end{align}
+Substituting
+\begin{equation}
+    \widetilde{A}_{11}=\Theta,
+    \qquad \widetilde{A}_{21}=-BP,
+    \qquad \widetilde{A}_{22}=BQB^{-1},
+\end{equation}
+and using the strain-block equation gives the explicit expression
+\begin{equation}
+    \begin{aligned}
+        \operatorname{vec}(\widetilde{C}_{21})
+         & =\left[I_m\otimes(BQB^{-1})+\Theta\otimes I_n\right]^{-1}
+        (I_m\otimes BP)
+        \left[I_m\otimes\Theta+\Theta\otimes I_m\right]^{-1}
+        \operatorname{vec}(\Sigma\Sigma^{\top}).
+    \end{aligned}
+\end{equation}
+
+\begin{align}
+    \operatorname{Var}(Z) = \mathbb{E}[Z Z^\top]
+\end{align}
+where
+\begin{align}
+    ZZ^\top = \begin{pmatrix}
+                  \varepsilon \varepsilon^\top & \varepsilon \xi^\top \\
+                  \xi \varepsilon^\top         & \xi \xi^\top
+              \end{pmatrix}
+\end{align}
+
+Hence,
+\begin{align}
+    \operatorname{Var}(\widetilde{Z}) = \begin{pmatrix}
+                                            \varepsilon \varepsilon^\top & \varepsilon \xi^\top B^\top \\
+                                            B \xi \varepsilon^\top       & \eta B\eta^\top B^\top
+                                        \end{pmatrix}
+\end{align}
+\subsection{Regularization in higher dimension}
+We first show that mean regularization in higher dimension is not possible. We proceed, as in the one-dimensional case, by fixing the mean of transformed internal varaible, $\eta$, to a desired value $\gamma$.
+\begin{align}
+    \mathcal{L}_{reg} = (\mathbb{E}[\eta_\infty] - \gamma)^2
+\end{align}
+This leads to the stationary point
+\begin{align}
+    BQ^{-1}P\mu = \gamma.
+\end{align}
+As $B \in \mathbb{R}^{n \times n}$ and $\gamma \in  \mathbb{R}^{n}$, the above system of equations is underdetermined for $n > 1$, and hence does not lead to a unique solution for $B$. Hence, mean regularization in higher dimensions is not feasible
+
+Therefore, we resort to covariance regularization instead. The covariance regularization can be done by the following equation
+\begin{align}
+    \mathcal{L}_{reg} = \left|\left|\mathbb{E}[\eta_\infty \varepsilon_\infty^{\top}] - \Gamma\right|\right|_{F}^2
+\end{align}
+where $\left| \left| \cdot \right|\right|_{F}$ represents the Frobenious norm. The stationary point of this regularization leads to the foollowing equation
+\begin{align}
+    \mathbb{E}[\eta_\infty \varepsilon_\infty^{\top}] = \Gamma.
+\end{align}
+Hence, we substitute $\mathbb{E}[\eta_\infty \varepsilon_\infty^{\top}] \coloneqq \widetilde{C}_{21}$ with $\Gamma$ and analysis if that leads to a unique solution for $B$.
+To determine $B$ from $\widetilde{C}_{21}$, define
+\begin{equation}
+    Y=B^{-1}\widetilde{C}_{21}.
+\end{equation}
+Multiplying the Sylvester equation for $\widetilde{C}_{21}$ by $B^{-1}$
+from the left gives
+\begin{equation}
+    QY+Y\Theta^{\top}=P\widetilde{C}_{11},
+\end{equation}
+so that
+\begin{equation}
+    \operatorname{vec}(Y)
+    =\left[I_m\otimes Q+\Theta\otimes I_n\right]^{-1}
+    (I_m\otimes P)
+    \left[I_m\otimes\Theta+\Theta\otimes I_m\right]^{-1}
+    \operatorname{vec}(\Sigma\Sigma^{\top}).
+\end{equation}
+The relationship between $B$ and the observed transformed cross-covariance is
+therefore
+\begin{equation}
+    \widetilde{C}_{21}=BY.
+\end{equation}
+Hence, substituting $\widetilde{C}_{21} = \Gamma$ we solve for $B$.
+\begin{equation}
+    BY = \Gamma.
+\end{equation}
+We note that $B \in \mathbb{R}^{n \times n}$, $Y \in \mathbb{R}^{n \times m}$, and $\Gamma \in \mathbb{R}^{n \times m}$.
+We write the above equation in vector form using the Kroneckor notationi
+\begin{align}
+    \underbrace{[Y^\top \otimes I_n]}_{V} \underbrace{\operatorname{vec}(B)}_{\beta} & = \underbrace{\operatorname{vec}(\Gamma)}_{\gamma} \\
+    \implies V \beta = \gamma
+\end{align}
+where $V \in \mathbb{R}^{nm \times n^2}$, $\beta \in \mathbb{R}^{n^2}$, and $\gamma \in \mathbb{R}^{nm}$.
+The above system as the following solution
+\begin{align}
+    \beta = \begin{cases} V^{-1} \gamma,                   & \quad m = n. \\
+              (V^{\top}V)^{-1} V^{\top}\gamma, & \quad m > n. \\
+              V^{\top}(VV^{\top})^{-1} \gamma, & \quad m < n. \\
+            \end{cases}
+\end{align}
+\begin{equation}
+    \mathcal{L}_{reg} = \left|\left|\mathbb{E}[{\eta \varepsilon^{\top}}] - \Gamma \right|\right|_F^2 + \lambda \mathbb{E}[\eta]^{\top}\mathbb{E}[\eta]
+\end{equation}
+We analyze the above loss function by substituting steady state values of covariance matrices and expectation
+\begin{equation}
+    \mathcal{L}_{reg} = \left|\left|B\mathbb{E}[{\xi \varepsilon^{\top}}] - \Gamma \right|\right|_F^2 + \lambda \mathbb{E}[\xi]^{\top}B^{\top}B\mathbb{E}[\xi]
+\end{equation}
+Note that $Y = \mathbb{E}[\xi \varepsilon^{\top}] = C_{21}$.
+Therefore, the regularized loss function can be rewritten in terms of $Y$ as
+\begin{equation}
+    \mathcal{L}_{reg}(B) = \left|\left|BY - \Gamma \right|\right|_F^2 + \lambda \mu^{\top}B^{\top}B\mu.
+\end{equation}
+For $\lambda = 0$.
+
+% Using $\widetilde{C}_{21}=\widetilde{C}_{12}^{\top}$ and the definitions
+% $\widetilde{A}_{11}=\Theta$, $\widetilde{A}_{21}=-BP$, and
+% $\widetilde{A}_{22}=BQB^{-1}$, the $(1,2)$ block equation becomes
+% \begin{equation}
+%     \Theta\widetilde{C}_{12}
+%     +\widetilde{C}_{12}B^{-\top}Q^{\top}B^{\top}
+%     =\widetilde{C}_{11}P^{\top}B^{\top}.
+% \end{equation}
+% Thus, $\widetilde{C}_{12}$ is the unique solution of this Sylvester equation
+% when $\Theta$ and $BQB^{-1}$ have eigenvalues with positive real parts. In
+% terms of the untransformed cross-covariance block $C_{12}$, it is
+% \begin{equation}
+%     \widetilde{C}_{12}=C_{12}B^{\top},
+%     \qquad
+%     \widetilde{C}_{21}=BC_{12}^{\top}.
+% \end{equation}
+% Equivalently, the solution can be written as the matrix integral
+% \begin{equation}
+%     \widetilde{C}_{12}
+%     =\int_{0}^{\infty}e^{-\Theta s}
+%     \widetilde{C}_{11}P^{\top}B^{\top}
+%     e^{-B^{-\top}Q^{\top}B^{\top}s}\,ds.
+% \end{equation}
+\section{Multidimensional Learning}
+Let $\varepsilon(t) \in \mathbb{R}^m$ and $\xi(t) \in \mathbb{R}^n$. Define energy and dissipation functions as follows
+\begin{align}
+    \mathcal{W}(\varepsilon, \xi) & = \frac{1}{2} \|\varepsilon - \xi \|^2 + \frac{1}{2} \|\xi\|^2, \\
+    \mathcal{D}(\dot{\xi})        & = \frac{1}{1+p} \|\dot{\xi}\|^{(1+p)}, \quad 1\geq p > 0.
+\end{align}
+The above equations lead to the following constitutive law
+\begin{align}
+    \dot{\xi} & = \|\varepsilon - 2\xi\|^{1/p}\operatorname{sign}(\varepsilon - 2\xi) \\
+    \sigma    & = \varepsilon - \xi.
+\end{align}
+
+Note that in higher dimension, $\operatorname{sign}(\cdot)$ is interpreted as direction. Specifically, for a vector $v \in \mathbb{R}^m$, $\operatorname{sign}(v) = v / \|v\|$.
+The above constitutive law can be solved by
+\begin{align}
+    \xi^{n+1}  & = \xi^n + \|\varepsilon^n - 2\xi^n\|^{1/p}\operatorname{sign}(\varepsilon - 2\xi^n) \Delta t. \\
+    \sigma^{n} & = \varepsilon^n - \xi^n.
+\end{align}
+\section{To-Do List}
+\begin{itemize}
+    \item How to smoothen the OU trajectories to reduce noise in $\xi$ and $\sigma$?
+    \item Check how well does the model generalize for time-scales different thatn the training time-scale.
+    \item Code for branching process and adjoint method of optimization
+    \item Try Lagrange multiplier method of constraint for optimization. How would optimization work in Lagrange multiplier framework?
+\end{itemize}
+\appendix
+\section{FEniCS solver with the learned neural constitutive law}
+\label{a:sec:fenics-neural-bar}
+The script \texttt{fenics\_neural\_1d\_bar.py} solves a displacement-controlled
+unit bar using the trained state dictionaries produced by
+\texttt{train\_neural\_variational\_ode.py}. The domain is
+$\Omega=(0,1)$, the displacement satisfies $u(0)=0$, and the prescribed
+right-end displacement is $u(1)=\lambda$, where $\lambda$ increases from zero
+to one. Thus, the macroscopic strain is the load parameter $\lambda$.
+
+With a constant body force $b$, the equilibrium equation and its weak form are
+\begin{equation}
+    -\frac{d\sigma}{dx}=b,
+    \qquad
+    \int_0^1 \sigma(\varepsilon,\xi) v_{,x}\,dx
+    -\int_0^1 b v\,dx=0,
+    \qquad v(0)=v(1)=0,
+\end{equation}
+with $\varepsilon=u_{,x}$. The command-line option
+\texttt{--body-force} sets $b$ and defaults to $b=1$. Linear finite elements are used on $N$ equally
+spaced nodes. Since the learned model is history dependent, the strain at
+every node is evaluated over the complete sequence of converged load steps.
+For a trial displacement during a nonlinear iteration, the current trial
+strain is appended to that history and the neural variational ODE is advanced
+from $\xi_0=0$; its final output is
+\begin{equation}
+    \sigma_i=W_{,\varepsilon}(\varepsilon_i,\xi_i),
+    \qquad
+    \dot{\xi}_i=D_{,\dot{\xi}}(-W_{,\xi}(\varepsilon_i,\xi_i)).
+\end{equation}
+
+The P1 element strain is constant on each element. The implementation assigns
+the element gradient to boundary nodes and averages the two adjacent element
+gradients at an interior node. The resulting nodal stresses are interpolated
+as a FEniCS coefficient, and the weak residual is assembled by FEniCS. The
+remaining internal displacements are obtained with a SciPy nonlinear root
+solve, because a PyTorch autograd constitutive evaluation cannot be represented
+directly as a UFL expression.
+
+Run from the project directory with, for example,
+\begin{verbatim}
+python fenics_neural_1d_bar.py --nodes 51 --load-steps 50 \\
+    --checkpoint one-d/neural_variational_ode_1.pt
+\end{verbatim}
+The output file \texttt{neural\_bar\_results.npz} contains the mesh coordinates,
+load factors, displacement history, reconstructed strain history, and nodal
+stress history. The script requires legacy FEniCS/DOLFIN, PyTorch, NumPy, and
+SciPy. The checkpoint must have $e_{\mathrm{dim}}=\xi_{\mathrm{dim}}=1$.
+
+For a benchmark that does not use the neural network, the reference law in
+\texttt{true\_constitutive\_law.py} implements the same forward-Euler update
+from Section~2 and returns the complete stress history. Select it with
+\texttt{--constitutive-law true}; no PyTorch checkpoint is required:
+\begin{verbatim}
+python fenics_neural_1d_bar.py --constitutive-law true --nodes 51 \\
+    --load-steps 10 --body-force 1.0 \\
+    --output true_constitutive_bar_results.npz
+\end{verbatim}
+The default \texttt{--constitutive-law neural} retains the learned model
+workflow. Comparing the two output files with identical mesh, load steps,
+body force, and model time step provides a FEM and constitutive-law benchmark.
+
+The class \texttt{IsotropicHardeningPlasticity} in
+\texttt{true\_constitutive\_law.py} implements the plasticity model at the end
+of this document. Its parameters are the initial yield stress $\sigma_0$,
+hardening modulus $H$, and exponent $p$. For $p>0$ it uses the stated
+forward-Euler viscoplastic update; for $p=0$ it uses the one-dimensional return
+map for the rate-independent elastoplastic limit. The class accepts a
+$(\text{time},\text{node})$ strain history and returns a stress history of the
+same shape through \texttt{stress\_history}.
+
+\section{Solution of the OU process}
+\label{a:sec:ou-solution}
+For a differentiable test function $f$,
+the generator of the full OU-process with drift and diffusion is given by
+\begin{equation}
+    (\mathcal{L}f)(X)=\theta(\mu-X)f'(X)
+    +\frac{\sigma^2}{2}f''(X).
+\end{equation}
+Let the integrating factor be $M_t=X e^{\theta t}$. Then
+\begin{equation}
+    dM_t=\theta\mu e^{\theta t}\,dt+\sigma e^{\theta t}\,dW_t.
+\end{equation}
+Integrating from $0$ to $t$ gives
+\begin{equation}
+    M_t=M_0+\theta\mu\int_0^t e^{\theta s}\,ds+\sigma\int_0^t e^{\theta s}\,dW_s,
+\end{equation}
+which can be rearranged to yield the solution
+\begin{equation}
+    X_t=\mu+(X_0-\mu)e^{-\theta t}
+    +\sigma\int_0^t e^{-\theta(t-s)}\,d
+    W_s.
+\end{equation}
+\section{Fokkar-Plank and Kolmogorov PDE}
+Consider an SDE of the form
+\begin{equation}
+    dX_t = -F(X_t)\,dt + \sigma(X_t)\,dW_t,
+\end{equation}
+For a function $f: (x) \mapsto \mathbb{R}$, the generator of the SDE is
+\begin{equation}
+    (\mathcal{L}f)=-F(x)\cdot \nabla f
+    +\sigma \sigma^\top \colon \nabla \nabla f.
+\end{equation}
+Let $\bar{f} (t, x) = \mathbb{E}[f(X_t)|X_0 = x]$. Then, by the Kolmogorov equation, $\bar{f}$ satisfies
+\begin{equation}
+    \frac{d}{dt}\bar{f}(t)=\mathcal{L}\bar{f},\qquad \bar{f}(0, x) = f(x).
+\end{equation}
+The Adjoint of the generator $\mathcal{L}$ is given by
+\begin{equation}
+    \mathcal{L}^*p=\nabla\cdot(F(x)p)
+    +\nabla\nabla\colon(\sigma \sigma^\top p).
+\end{equation}
+The Fokker-Planck equation is given by
+\begin{equation}
+    \frac{d}{dt}p(t)=\mathcal{L}^*p(t),\qquad p(0, x) = \delta(x - x_0).
+\end{equation}
+\section{OU-driven expression for \texorpdfstring{$\xi(t)$}{xi(t)}}
+\label{a:sec:alternative_ou_solution}
+For the linear derived-variable equation in Section 3, the expression for
+$\xi(t)$ is
+\begin{equation}
+    \xi(t)=\int_0^t e^{-2(t-s)}\varepsilon(s)\,ds.
+\end{equation}
+Taking the input trajectory to be the OU process from Section 2 gives
+\begin{equation}
+    \varepsilon(s)=X_s
+    =\mu+(x_0-\mu)e^{-\theta s}
+    +\sigma\int_0^s e^{-\theta(s-\tau)}\,dW_\tau.
+\end{equation}
+Therefore, $\xi(t)$ can be written explicitly in terms of the OU process as
+\begin{equation}
+    \xi(t)=\int_0^t e^{-2(t-s)}
+    \left[
+    \mu+(x_0-\mu)e^{-\theta s}
+    +\sigma\int_0^s e^{-\theta(s-\tau)}\,dW_\tau
+    \right]ds.
+\end{equation}
+
+To simplify this expression, split it into its deterministic and stochastic
+parts:
+\begin{align*}
+    \xi(t)
+     & = \mu\int_0^t e^{-2(t-s)}\,ds
+    +(x_0-\mu)\int_0^t e^{-2(t-s)}e^{-\theta s}\,ds \\
+     & \quad +\sigma\int_0^t e^{-2(t-s)}
+    \left(\int_0^s e^{-\theta(s-\tau)}\,dW_\tau\right)ds.
+\end{align*}
+For the first deterministic term,
+\begin{align*}
+    \int_0^t e^{-2(t-s)}\,ds
+     & =e^{-2t}\int_0^t e^{2s}\,ds \\
+     & =\frac{1-e^{-2t}}{2}.
+\end{align*}
+For the second deterministic term, factor the exponential as
+\begin{align*}
+    \int_0^t e^{-2(t-s)}e^{-\theta s}\,ds
+     & =e^{-2t}\int_0^t e^{(2-\theta)s}\,ds     \\
+     & =\frac{e^{-\theta t}-e^{-2t}}{2-\theta},
+    \qquad \theta\ne2.
+\end{align*}
+Therefore, the deterministic contribution is
+\begin{align*}
+    \mu\int_0^t e^{-2(t-s)}\,ds
+    +(x_0-\mu)\int_0^t e^{-2(t-s)}e^{-\theta s}\,ds
+    =\frac{\mu}{2}(1-e^{-2t})
+    +\frac{x_0-\mu}{2-\theta}
+    (e^{-\theta t}-e^{-2t}).
+\end{align*}
+For the stochastic term, exchanging the order of integration gives
+\begin{align*}
+     & \int_0^t e^{-2(t-s)}
+    \left(\int_0^s e^{-\theta(s-\tau)}\,dW_\tau\right)ds               \\
+     & \qquad = \int_0^t
+    \left(\int_\tau^t e^{-2(t-s)}e^{-\theta(s-\tau)}\,ds\right)dW_\tau \\
+     & \qquad = \frac{1}{2-\theta}\int_0^t
+    \left[e^{-\theta(t-\tau)}-e^{-2(t-\tau)}\right]dW_\tau,
+    \qquad \theta\ne 2.
+\end{align*}
+Indeed, for fixed $\tau$, with $q=s-\tau$,
+\begin{align*}
+    \int_\tau^t e^{-2(t-s)}e^{-\theta(s-\tau)}\,ds
+     & =e^{-2(t-\tau)}\int_0^{t-\tau}e^{(2-\theta)q}\,dq     \\
+     & =\frac{e^{-\theta(t-\tau)}-e^{-2(t-\tau)}}{2-\theta}.
+\end{align*}
+Thus, for $\theta\ne 2$, the simplified form of equation (20) is
+\begin{equation}
+    \xi(t)=\frac{\mu}{2}\bigl(1-e^{-2t}\bigr)
+    +\frac{x_0-\mu}{2-\theta}\bigl(e^{-\theta t}-e^{-2t}\bigr)
+    +\frac{\sigma}{2-\theta}\int_0^t
+    \left[e^{-\theta(t-\tau)}-e^{-2(t-\tau)}\right]dW_\tau.
+\end{equation}
+For the special case $\theta=2$, taking the limit gives
+\begin{equation}
+    \xi(t)=\frac{\mu}{2}\bigl(1-e^{-2t}\bigr)
+    +(x_0-\mu)t e^{-2t}
+    +\sigma\int_0^t (t-\tau)e^{-2(t-\tau)}\,dW_\tau.
+\end{equation}
+
+For $x_0=0$, equations 21 and 22 become, respectively,
+\begin{equation}
+    \xi(t)=\frac{\mu}{2}\bigl(1-e^{-2t}\bigr)
+    -\frac{\mu}{2-\theta}\bigl(e^{-\theta t}-e^{-2t}\bigr)
+    +\frac{\sigma}{2-\theta}\int_0^t
+    \left[e^{-\theta(t-\tau)}-e^{-2(t-\tau)}\right]dW_\tau,
+    \qquad \theta\ne 2,
+\end{equation}
+and
+\begin{equation}
+    \xi(t)=\frac{\mu}{2}\bigl(1-e^{-2t}\bigr)
+    -\mu t e^{-2t}
+    +\sigma\int_0^t (t-\tau)e^{-2(t-\tau)}\,dW_\tau,
+    \qquad \theta=2.
+\end{equation}
+
+\section{Reinforcement-learning formulation for adaptive sampling}
+\label{a:sec:rl-sampling}
+The sampling problem can also be posed as a sequential decision problem. Instead of fixing the OU parameters $(\theta,\sigma)$ a priori, an agent can adapt them online based on the observed trajectory and the current uncertainty in the state. This is especially useful when the goal is to maximize information gain while avoiding excessive variance or anisotropy. A natural formulation is a Markov decision process with state
+\begin{equation}
+    s_t = \bigl(\varepsilon_t,\xi_t,\hat{m}_t,\hat{C}_t, t\bigr),
+\end{equation}
+where $\hat{m}_t$ is the running estimate of the mean and $\hat{C}_t$ is the empirical covariance of the sampled pair $(\varepsilon_t,\xi_t)$. At each decision point, the agent selects an action
+\begin{equation}
+    a_t = \bigl(\theta_t,\sigma_t,\Delta t_t\bigr),
+\end{equation}
+which determines the next OU update,
+\begin{equation}
+    \varepsilon_{t+1}
+    = \varepsilon_t + \theta_t(\mu-\varepsilon_t)\Delta t_t
+    + \sigma_t\sqrt{\Delta t_t}\,Z_t,
+    \qquad Z_t\sim \mathcal{N}(0,1),
+\end{equation}
+with the derived variable updated by
+\begin{equation}
+    \xi_{t+1}=\xi_t + F(\varepsilon_t,\xi_t; a_t)\Delta t_t.
+\end{equation}
+The reward for a trajectory segment can be designed to trade off information content and sampling cost. One useful choice is
+\begin{equation}
+    r_t = \lambda_1 \operatorname{tr}(\hat{C}_t)
+    - \lambda_2\Delta \lambda_t
+    - \lambda_3 c(a_t),
+\end{equation}
+where $\Delta\lambda_t$ is the principal-value gap of the empirical covariance, $c(a_t)$ is a cost term penalizing large diffusion or aggressive updates, and $\lambda_1,\lambda_2,\lambda_3\ge 0$ tune the objective. This reward rewards large total variance and isotropic geometry, while discouraging inefficient or expensive exploration. The policy then solves
+\begin{equation}
+    \pi^* = \arg\max_{\pi}
+    \mathbb{E}_{\pi}\left[
+        \sum_{t=0}^{T} \gamma^t r_t
+        \right],
+\end{equation}
+for a discount factor $\gamma\in(0,1)$. In a continuous-action setting, a policy-gradient method such as PPO or SAC is natural; in a discrete-action setting, a value-based method such as DQN may be sufficient. The observation can be augmented with historical statistics, such as a short moving average of the covariance or a buffer of recent sample points, to give the agent a better estimate of the stationary regime.
+
+The RL formulation is therefore a direct extension of the optimization described in Section~3.2. Rather than selecting a single optimal pair $(\theta,\sigma)$ offline, the agent adaptively changes the sampling policy so that the process remains in a regime with high information content while preserving a nearly isotropic covariance. In practical terms, this can be implemented by training a simulator that generates OU trajectories, computes $(\varepsilon_t,\xi_t)$ and their covariance, and returns the reward above. Once trained, the policy can be deployed to decide which parameter setting to use for the next block of samples, enabling a data-driven adaptive sampler that is robust to changes in the underlying regime.
+
+This perspective also connects naturally with constrained control. If the objective is to minimize the total estimation error under a fixed sampling budget, one may replace the reward above by a negative loss such as
+\begin{equation}
+    r_t = -\alpha\,\|\hat{m}_t-m_\mathrm{target}\|^2
+    -\beta\,\|\hat{C}_t-C_\mathrm{target}\|_F^2
+    -\eta c(a_t).
+\end{equation}
+The agent then learns a policy that chooses the sampling parameters to steer the empirical mean and covariance toward a desired target, while balancing exploration and cost.
+
+\section{Vectorization and Kronecker-product notation}
+\label{a:sec:kronecker-notation}
+The Kronecker-product method converts matrix equations into ordinary linear
+systems. For a matrix $X\in\mathbb{R}^{p\times q}$, the column-wise vectorization
+$\operatorname{vec}(X)$ is the vector obtained by stacking the columns of $X$:
+\begin{equation}
+    X=\begin{pmatrix}
+        x_{11} & \cdots & x_{1q} \\
+        \vdots &        & \vdots \\
+        x_{p1} & \cdots & x_{pq}
+    \end{pmatrix}
+    \quad\Longrightarrow\quad
+    \operatorname{vec}(X)=
+    \begin{pmatrix}
+        x_{11} \\
+        \vdots \\
+        x_{p1} \\
+        x_{12} \\
+        \vdots \\
+        x_{pq}
+    \end{pmatrix}.
+\end{equation}
+Thus, a $p\times q$ matrix is represented by a vector of length $pq$.
+
+For $A\in\mathbb{R}^{p\times q}$ and $B\in\mathbb{R}^{r\times s}$, the
+Kronecker product $A\otimes B$ is the $pr\times qs$ block matrix obtained by
+replacing every entry $a_{ij}$ of $A$ by the block $a_{ij}B$:
+\begin{equation}
+    A\otimes B
+    =\begin{pmatrix}
+        a_{11}B & \cdots & a_{1q}B \\
+        \vdots  &        & \vdots  \\
+        a_{p1}B & \cdots & a_{pq}B
+    \end{pmatrix}.
+\end{equation}
+For example, if
+\begin{equation}
+    A=\begin{pmatrix}1&2\\3&4\end{pmatrix},
+    \qquad
+    B=\begin{pmatrix}0&1\\1&0\end{pmatrix},
+\end{equation}
+then
+\begin{equation}
+    A\otimes B
+    =\begin{pmatrix}
+        0 & 1 & 0 & 2 \\
+        1 & 0 & 2 & 0 \\
+        0 & 3 & 0 & 4 \\
+        3 & 0 & 4 & 0
+    \end{pmatrix}.
+\end{equation}
+The Kronecker product is useful here because it represents repeated matrix
+operations on the columns or rows of a matrix after vectorization.
+
+For matrices $A$, $X$, and $B$ of compatible dimensions, the fundamental
+vectorization identity is
+\begin{equation}
+    \operatorname{vec}(AXB)
+    =\left(B^{\top}\otimes A\right)\operatorname{vec}(X),
+\end{equation}
+where $\otimes$ denotes the Kronecker product. In particular,
+\begin{align}
+    \operatorname{vec}(AX)
+     & =\left(I\otimes A\right)\operatorname{vec}(X),        \\
+    \operatorname{vec}(XB)
+     & =\left(B^{\top}\otimes I\right)\operatorname{vec}(X).
+\end{align}
+The first identity follows by writing $X$ as a collection of columns. If
+$X=[x_1,\ldots,x_q]$, then $AX=[Ax_1,\ldots,Ax_q]$, so left multiplication
+by $A$ applies the same matrix to every column. The Kronecker product
+$I_q\otimes A$ is precisely the block-diagonal matrix containing $q$ copies
+of $A$.
+
+Applying the identity to a continuous Lyapunov equation,
+\begin{equation}
+    AX+XA^{\top}=Q,
+\end{equation}
+gives
+\begin{equation}
+    \left(I\otimes A+A\otimes I\right)\operatorname{vec}(X)
+    =\operatorname{vec}(Q).
+\end{equation}
+Therefore, whenever the Kronecker-sum matrix is nonsingular,
+\begin{equation}
+    \operatorname{vec}(X)
+    =\left(I\otimes A+A\otimes I\right)^{-1}\operatorname{vec}(Q).
+\end{equation}
+This is the linear-algebra step used in Section~6 to solve for the blocks of
+$\widetilde{C}_\infty$. For a Sylvester equation
+$AX+XB=Q$, the corresponding formula is
+\begin{equation}
+    \left(I\otimes A+B^{\top}\otimes I\right)\operatorname{vec}(X)
+    =\operatorname{vec}(Q).
+\end{equation}
+If transposes must be vectorized explicitly, the commutation matrix
+$K_{p,q}$ is defined by
+\begin{equation}
+    \operatorname{vec}(X^{\top})
+    =K_{p,q}\operatorname{vec}(X),
+    \qquad X\in\mathbb{R}^{p\times q}.
+\end{equation}
+\section{Notebook demonstration}
+
+The notebook \texttt{ou\_trajectories\_demo.ipynb} uses the conda base Python
+kernel and imports both local modules. It performs the following steps:
+\begin{enumerate}
+    \item Generates ten reproducible OU trajectories using
+          $\theta=2$, $\mu=1$, $\sigma=0.3$, $x_0=0$, and seed 42.
+    \item Uses the resulting path array as the batch of input trajectories
+          $\varepsilon(t)$.
+    \item Computes \texttt{xi} and \texttt{sigma\_from\_ou} with the same
+          time increment as the OU simulation.
+    \item Plots the ten OU paths, including a dashed horizontal line at
+          the long-run mean $\mu$.
+    \item Plots the ten derived $\xi(t)$ paths and ten $\sigma(t)$ paths in
+          side-by-side panels.
+\end{enumerate}
+
+For the default simulation grid, the OU, $\xi$, and $\sigma$ arrays each have
+shape $(10,101)$: ten paths sampled from time $0$ through time $1$ inclusive.
+
+\section{Files}
+
+\begin{center}
+    \begin{tabular}{ll}
+        \toprule
+        File                                  & Role                                                       \\
+        \midrule
+        \texttt{ou\_trajectories.py}          & NumPy OU trajectory generator                              \\
+        \texttt{xi\_sigma.py}                 & Computation of $\xi$ and $\sigma$ from $\varepsilon$ paths \\
+        \texttt{ou\_trajectories\_demo.ipynb} & Reproducible simulation and visualization notebook         \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+\section{Solution of high dimensional OU process}
+\label{a:sec-vec-ou-solution}
+\begin{equation}
+    dZ_t = -AZ_t\,dt + G\,dW_t.
+\end{equation}
+Consider the integrating factor $M_t = e^{At}Z_t$. Then using It\^o's rule for differentiation of a product, we have
+\begin{align}
+    dM_t & = e^{At}dZ_t + A e^{At}Z_t\,dt                  \\
+         & = e^{At}(-AZ_t\,dt + G\,dW_t) + A e^{At}Z_t\,dt \\
+         & = e^{At}G\,dW_t.
+\end{align}
+Hence, integrating from $0$ to $t$ gives
+\begin{equation}
+    M_t = M_0 + \int_0^t e^{As}G
+    \,dW_s,
+\end{equation}
+Hence,
+\begin{align}
+    Z_t & = e^{-At}M_t                         \\
+        & = e^{-At}Z_0 + \int_0^t e^{-A(t-s)}G
+    \,dW_s.
+\end{align}
+We have the expected value of $Z_t$ as
+\begin{equation}
+    \mathbb{E}[Z_t] = e^{-At}Z_0.
+\end{equation}
+The using Ito's Isometry, the second moment of $Z_t$ can be computed as
+\begin{align}
+    \mathbb{E}[Z_tZ_t^\top]
+     & = \mathbb{E}\left[\left(\int_0^t e^{-A(t-s)}G\,dW_s\right)
+        \left(\int_0^t e^{-A(t-s)}G\,dW
+    _s\right)^\top\right]                                         \\
+     & = \int_0^t e^{-A(t-s)}GG^\top e^{-A^\top(t-s)}\,ds.        \\
+     & = \int_0^t e^{-As}GG^\top e^{-A^\top s}\,ds.
+\end{align}
+The steady state covariance matrix can also be compute using the formula
+\begin{equation}
+    AC_\infty + C_\infty A^\top = GG^\top.
+\end{equation}
+If the OU process were had a stationary non-zero mean given by
+\begin{equation}
+    dZ_t = -A(Z_t - \mu)\,dt + G\,dW_t.
+\end{equation}
+The steady state mean of this process is
+\begin{equation}
+    \mathbb{E}[Z_t] \to \mu \quad \text{as } t \to \infty.
+\end{equation}.
+\subsection{Adjoint Method}
+\label{a:sec:adjoint-method}
+Consider the following equations
+\begin{align}
+    \sigma    & = f(\varepsilon, \xi) \\
+    \dot{\xi} & = g(\varepsilon, \xi) \\
+    h(\xi)    & = 0
+\end{align}
+where $h(\xi)$ represents a constraint such that
+\begin{equation}
+    h(\xi) = \int_0^T \xi \xi^\top \,dt - \Gamma = 0.
+\end{equation}
+Note that $h(\xi)$ is a functional of the trajectory $\xi(t)$ over the time interval $[0, T]$.
+The loss function is given as
+\begin{align}
+    J(\xi,\theta)
+     & = \frac{1}{2}\int_0^T
+    \|\widehat{\sigma}(t)-f(\varepsilon(t),\xi(t),\theta)\|^2\,dt,
+\end{align}
+where $\widehat{\sigma}$ represents the true observed variable and $\theta$ represents the set of parameters to be optimized.
+The factor $1/2$ is conventional and can be omitted, in which case the
+corresponding data-misfit terms below acquire a factor of $2$.
+
+The integral constraint is matrix-valued. Therefore, its adjoint variable
+$\mu$ is a matrix of the same size as $h(\xi)$, while $\lambda(t)$ is a vector
+of the same size as $\xi(t)$. We use the Frobenius inner product
+$\langle A,B\rangle_F=\operatorname{tr}(A^\top B)$ and define the augmented
+Lagrangian by
+\begin{align}
+    \mathcal{L}_{\mathrm{aug}}(\xi,\lambda,\mu,\theta)
+           & = J(\xi,\theta)
+    +\int_0^T \lambda(t)^\top
+    \left[g(\varepsilon(t),\xi(t),\theta)-\dot{\xi}(t)\right]dt
+    +\left\langle \mu,h(\xi)\right\rangle_F,       \\
+    h(\xi) & =\int_0^T\xi(t)\xi(t)^\top dt-\Gamma.
+\end{align}
+
+Here and below, subscripts denote Jacobians, for example
+$f_\xi=\partial f/\partial\xi$ and $g_\theta=\partial g/\partial\theta$.
+The first variation with respect to $\lambda$ gives the state equation
+\begin{equation}
+    \dot{\xi}=g(\varepsilon,\xi,\theta),
+    \qquad \xi(0)=\xi_0,
+\end{equation}
+and the first variation with respect to $\mu$ gives the integral constraint
+\begin{equation}
+    h(\xi)=\int_0^T\xi(t)\xi(t)^\top dt-\Gamma=0.
+\end{equation}
+
+To derive the adjoint equation, let $\delta\xi$ be an arbitrary state
+variation. The variation of the integral constraint is
+\begin{equation}
+    \delta h
+    =\int_0^T\left[\delta\xi(t)\xi(t)^\top
+        +\xi(t)\delta\xi(t)^\top\right]dt.
+\end{equation}
+Consequently,
+\begin{equation}
+    \delta\langle\mu,h(\xi)\rangle_F
+    =\int_0^T\left[(\mu+\mu^\top)\xi(t)\right]^\top
+    \delta\xi(t)\,dt.
+\end{equation}
+Only the symmetric part of $\mu$ affects the constraint, so $\mu$ may be
+chosen symmetric. In that case, the preceding expression is
+$2\int_0^T(\mu\xi)^\top\delta\xi\,dt$.
+
+The multiplier $\mu$ is not a freely chosen physical parameter. At a
+constrained optimum, its value is determined together with the state and the
+adjoint by the stationarity conditions
+\begin{align}
+    \dot{\xi} & = g(\varepsilon,\xi,\theta),
+              & \xi(0)                                   & = \xi_0, \\
+    h(\xi)    & = \int_0^T\xi(t)\xi(t)^\top dt-\Gamma=0,            \\
+    -\dot{\lambda}
+              & = (f_\xi)^\top(f-\widehat{\sigma})
+    +(g_\xi)^\top\lambda+(\mu+\mu^\top)\xi,
+              & \lambda(T)                               & = 0.
+\end{align}
+Thus, $\mu$ can take whatever matrix value is required to enforce the target
+covariance $\Gamma$ while satisfying adjoint stationarity; it cannot be set to
+an arbitrary value if the constraint is to hold. If the constraint is
+infeasible, no multiplier can make it hold exactly. In numerical optimization,
+$\mu$ is typically found by solving this coupled forward--backward system or
+by updating the multiplier in an augmented-Lagrangian method. Since only the
+symmetric part enters, one may impose $\mu=\mu^\top$ without loss of
+generality.
+
+This multiplier $\mu$ should be distinguished from the OU long-run mean,
+which is also denoted by $\mu$ in the earlier OU sections. To avoid this
+notation clash, the covariance-constraint multiplier could equivalently be
+written as $\mu_{\mathrm{adj}}$ or $\Lambda$.
+
+For fixed model parameters $\theta$, the multiplier can be computed by
+solving the nonlinear residual equation
+\begin{equation}
+    R(\mu)=h\bigl(\xi(\mu)\bigr)=0,
+\end{equation}
+where $\xi(\mu)$ is obtained from the forward state equation and the
+dependence on $\mu$ is propagated through the backward adjoint equation. A
+practical multiplier iteration is therefore:
+\begin{enumerate}
+    \item Choose an initial symmetric multiplier $\mu^{(0)}$, often zero.
+    \item Solve $\dot{\xi}=g(\varepsilon,\xi,\theta)$ forward in time.
+    \item Solve the adjoint equation for $\lambda$ backward from
+          $\lambda(T)=0$.
+    \item Compute the covariance residual
+          $R(\mu^{(k)})=\int_0^T\xi\xi^\top dt-\Gamma$.
+    \item Update the multiplier and symmetrize it, for example with
+          \begin{equation}
+              \mu^{(k+1)}
+              =\operatorname{sym}\left(
+              \mu^{(k)}+\rho_k R(\mu^{(k)})\right),
+              \qquad
+              \operatorname{sym}(A)=\frac{1}{2}(A+A^\top),
+          \end{equation}
+          where $\rho_k>0$ is a dual step size.
+    \item Continue until $\|R(\mu^{(k)})\|_F$ is below the desired tolerance.
+\end{enumerate}
+The simple dual update above is appropriate when the state equation or the
+constraint is sufficiently well-conditioned. For a strongly nonlinear or
+ill-conditioned problem, Newton, quasi-Newton, or a root solver can instead be
+applied to $R(\mu)=0$. The Jacobian required by Newton's method can be
+computed by differentiating the forward--backward solve, or approximated by
+finite differences in the independent entries of the symmetric matrix $\mu$.
+
+An augmented-Lagrangian implementation is often more robust. Define
+\begin{equation}
+    \mathcal{L}_{\mathrm{AL}}
+    =J+\left\langle\mu,h(\xi)\right\rangle_F
+    +\frac{\rho}{2}\|h(\xi)\|_F^2.
+\end{equation}
+After minimizing this expression with respect to the model parameters and
+state, update
+\begin{equation}
+    \mu^{(k+1)}
+    =\operatorname{sym}\left(\mu^{(k)}+\rho_k h(\xi^{(k)})\right).
+\end{equation}
+Unlike choosing a fixed arbitrary value of $\mu$, this update drives the
+constraint residual toward zero. If $\theta$ is optimized as well, the final
+solution must additionally satisfy $dJ/d\theta=0$ (or the corresponding
+augmented-Lagrangian stationarity condition); the state, adjoint, constraint,
+and parameter-stationarity equations then form the complete KKT system.
+
+The state-dependent part of the first variation is
+\begin{align}
+    \delta_\xi\mathcal{L}_{\mathrm{aug}}
+     & =\int_0^T\Big[
+        (f-\widehat{\sigma})^\top f_\xi\,\delta\xi
+        +\lambda^\top g_\xi\,\delta\xi
+        -\lambda^\top\delta\dot{\xi}
+        +\big((\mu+\mu^\top)\xi\big)^\top\delta\xi
+    \Big]dt                           \\
+     & = -\lambda(T)^\top\delta\xi(T)
+    +\lambda(0)^\top\delta\xi(0)      \\
+     & \quad+\int_0^T\Big[
+        (f_\xi)^\top(f-\widehat{\sigma})
+        +(g_\xi)^\top\lambda
+        +\dot{\lambda}
+        +(\mu+\mu^\top)\xi
+        \Big]^\top\delta\xi\,dt.
+\end{align}
+For a fixed initial condition and no terminal loss, $\delta\xi(0)=0$ and
+$\delta\xi(T)$ is free. Setting the first variation to zero gives the
+backward adjoint equation
+\begin{equation}
+    -\dot{\lambda}(t)
+    =(f_\xi)^\top(f-\widehat{\sigma})
+    +(g_\xi)^\top\lambda(t)
+    +(\mu+\mu^\top)\xi(t),
+    \qquad \lambda(T)=0.
+\end{equation}
+If $\mu$ is chosen symmetric, this becomes
+\begin{equation}
+    -\dot{\lambda}(t)
+    =(f_\xi)^\top(f-\widehat{\sigma})
+    +(g_\xi)^\top\lambda(t)+2\mu\xi(t),
+    \qquad \lambda(T)=0.
+\end{equation}
+The adjoint equation is integrated backward from $T$ to $0$ after the state
+trajectory $\xi(t)$ has been computed forward in time.
+
+It remains to differentiate with respect to the model parameters $\theta$.
+After imposing the state and adjoint equations, all terms involving the
+state sensitivity $\partial\xi/\partial\theta$ cancel, leaving
+\begin{equation}
+    \frac{dJ}{d\theta}
+    =\int_0^T\left[
+        (f_\theta)^\top(f-\widehat{\sigma})
+        +(g_\theta)^\top\lambda(t)
+        \right]dt.
+\end{equation}
+This is the adjoint gradient: it requires one forward solve for $\xi$ and one
+backward solve for $\lambda$, independently of the number of parameters in
+$\theta$. If the initial state depends on the parameters, $\xi_0=\xi_0(\theta)$,
+the gradient receives the additional boundary term
+$\lambda(0)^\top\,d\xi_0/d\theta$. A terminal loss would instead replace the
+terminal condition $\lambda(T)=0$ by the gradient of that terminal loss.
+
+For the common linear multidimensional constitutive relation
+\begin{equation}
+    g(\varepsilon,\xi,\theta)=P\varepsilon-Q\xi,
+    \qquad f(\varepsilon,\xi,\theta)=M\varepsilon+N\xi,
+\end{equation}
+the adjoint equation reduces to
+\begin{equation}
+    -\dot{\lambda}
+    =N^\top(M\varepsilon+N\xi-\widehat{\sigma})
+    -Q^\top\lambda
+    +(\mu+\mu^\top)\xi,
+    \qquad \lambda(T)=0.
+\end{equation}
+For parameters contained in $P,Q,M,N$, the corresponding gradient is obtained
+by substituting their partial derivatives into the general formula above.
+\section{Generalization from one OU Process to the Other}
+Consider strain sampled using the three parameter OU process 
+\begin{equation}
+    d\varepsilon = \theta(\mu -  \varepsilon) \, dt + \sigma \, dW.
+\end{equation}
+We fix $\sigma = 0.2$ and $\mu = 0.5$. And vary $\theta \in [0.1, 5.0]$.
+
+Standard testing methods for elasto plastic material 
+\begin{itemize}
+    \item Tensile testing: Primary method for determining elasticity and yield 
+    \item Load Unload: Elastic Recovery, amount of plastic strain 
+    \item Cyclic Axial: Kinematic vs isotropic hardening and Bauschinger effect
+\end{itemize}
+We consider a model as follows 
+\begin{align}
+    \sigma &= \varepsilon - \xi \\
+    \dot{\xi} &= \left|\dfrac{\varepsilon - \xi}{\sigma_0}\right|^{1/p}\mathrm{sign}(\varepsilon - \xi)
+\end{align}
+If $p=0$, the model reduces to the following cases using subdifferential:
+\begin{align}
+   \sigma = \varepsilon - \xi =  \begin{cases}
+    \sigma_0 & \text{if } \dot{\xi} > 0, \\
+    -\sigma_0 & \text{if } \dot{\xi} < 0, \\
+    (-\sigma_0, \sigma_0) & \text{if } \dot{\xi} = 0.
+   \end{cases}
+\end{align}
+The above model is elasto-viscoplastic for $p>0$ and reduces to an elasto-plastic model with a yield stress $\sigma_0$ when $p=0$. There is no strain hardening. The model can be written in variational form.
+
+\underline{Plasticity model with isotropic hardening}
+\begin{align}
+    \sigma &= \varepsilon - \xi \\
+    \dot{\xi} &= \left|\dfrac{\varepsilon - \xi}{\sigma_y}\right|^{1/p}\mathrm{sign}(\varepsilon - \xi)
+\end{align}
+where $\dot{\sigma}_y = H |\dot{\xi}|$, $\sigma_y(0) = \sigma_0$ and $H$ is the hardening modulus.
+
+The above model can be implemented numerically implemented as follows 
+
+\begin{align}
+    \sigma_{trial} &= \varepsilon_{n+1} - \xi_n\\
+    \dot{\xi}_{n+1} &= \left|\dfrac{\sigma_{trial}}{\sigma_{y,n}}\right|^{1/p}\mathrm{sign}(\sigma_{trial})\\
+    \sigma_{y,n+1} &= \sigma_{y,n} + H |\dot{\xi}_{n+1}|\\
+    \xi_{n+1} &= \xi_n + \dot{\xi}_{n+1}\\
+    \sigma_{n+1} &= \varepsilon_{n+1} - \xi_{n+1}
+\end{align}
+
+if $p=0$ then the algorithm is as follows:
+\begin{align}
+    \sigma_{trial} &= \varepsilon_{n+1} - \xi_n\\
+    \sigma_{o} &= \max(|\sigma_{trial} - \sigma_{y,n}|, 0)\\
+    \Delta \xi &= \mathrm{sign}(\sigma_{trial})\dfrac{\sigma_{o}}{1 + H}\\
+    \xi_{n+1} &= \xi_n + \Delta \xi\\
+    \sigma_{y, n+1} &= \sigma_{y,n} + H |\Delta \xi|\\
+    \sigma_{n+1} &= \varepsilon_{n+1} - \xi_{n+1}
+\end{align}
+\subsection{Variational formulation}
+Consider the following energy functional:
+\begin{align}
+\mathcal{W}(\varepsilon, \varepsilon^p, \xi) &= \frac{E}{2}(\varepsilon - \varepsilon^p)^2 + \frac{H}{2}(\xi)^2;\\
+\mathcal{D}(\dot{\xi}) &= \frac{1}{1+m}|\dot{\xi}|^{1+m}, \quad m>0;\\
+\dot{\xi} &= \dot{\varepsilon}^p \mathrm{sign}(\dot{\varepsilon}^p).
+\end{align}
+
+Let $\mathcal{W}_\xi$ be the total derivative of $\mathcal{W}$ with respect to $\xi$. By the second law of thermodynamics, the dissipation must be non-negative:
+\begin{align}
+\mathcal{W}_{\xi} \cdot \dot{\xi} \leq 0\\
+\implies \mathcal{W}_\xi + \mathcal{D}_{\dot{\xi}} = 0\\
+\implies \dfrac{\partial \mathcal{W}}{\partial \xi} + \dfrac{\partial \mathcal{W}}{\partial \varepsilon^p}\dfrac{d \varepsilon^p}{d \xi} + \dfrac{\partial \mathcal{D}}{\partial \dot{\xi}} = 0\\
+\implies \dfrac{\partial \mathcal{W}}{\partial \xi} + \dfrac{\partial \mathcal{W}}{\partial \varepsilon^p}\mathrm{sign}(\dot{\varepsilon}^p) + \dfrac{\partial \mathcal{D}}{\partial \dot{\xi}} = 0
+\end{align}
+The variational update is given as 
+\begin{align}
+\dfrac{\partial \mathcal{W}}{\partial \xi}(\varepsilon_{n+1}, \varepsilon^p_n +\Delta \varepsilon^p_{n}, \xi_n + |\Delta \varepsilon^p_n|) + \mathrm{sign}(\Delta \varepsilon^p_n)\dfrac{\partial \mathcal{W}}{\partial \varepsilon^p} (\varepsilon_{n+1}, \varepsilon^p_n +\Delta \varepsilon^p_{n}, \xi_n + |\Delta \varepsilon^p_n|) + \dfrac{\partial \mathcal{D}}{\partial \dot{\xi}}\left(\dfrac{|\Delta \varepsilon^p_n|}{\Delta t}\right) = 0 
+\end{align}
+For this specific form 
+\begin{align}
+H (\xi_n + |\Delta \varepsilon^p_n|) + \mathrm{sign}(\Delta \varepsilon^p_n) E((\varepsilon^p_n + \Delta \varepsilon^p_n) - \varepsilon_{n+1}) + \left|\dfrac{\Delta \varepsilon_n^p}{\Delta t} \right|^m= 0
+\end{align}
+
+
+Let $ s = \mathrm{sign}(\Delta \varepsilon^p_n) $
+
+\begin{align}
+H \xi_n  + H s\Delta \varepsilon^p_n + Es( (\varepsilon^p_n + \Delta \varepsilon^p_n) - \varepsilon_{n+1}) + \left|\dfrac{\Delta \varepsilon_n^p}{\Delta t} \right|^m &= 0\\
+H \xi_n + (H + E)s \Delta \varepsilon^p_n + Es(\varepsilon^p_n - \varepsilon_{n+1}) + \left|\dfrac{\Delta \varepsilon_n^p}{\Delta t} \right|^m &= 0\\
+(H+E)s \Delta \varepsilon^p_n + \left|\dfrac{\Delta \varepsilon_n^p}{\Delta t} \right|^m &= - H \xi_n   - Es(\varepsilon^p_n - \varepsilon_{n+1}) 
+\end{align}
+If $m=1$ 
+\begin{align}
+(H+E) s\Delta \varepsilon^p_n + \dfrac{ s \Delta \varepsilon_n^p}{\Delta t} &= - H \xi_n  - Es(\varepsilon^p_n - \varepsilon_{n+1}) \\
+(H + E + \dfrac{1}{\Delta t}) \Delta \varepsilon^p_n &= - H \xi_n s   - E(\varepsilon^p_n - \varepsilon_{n+1}) \\
+|\Delta \varepsilon_n^p|=s\Delta \varepsilon^p_n &= \frac{ sE(\varepsilon_{n+1}-\varepsilon^p_n) - H \xi_n  }{H + E + \dfrac{1}{\Delta t}}
+\end{align}
+Hence, $ s = \mathrm{sign}(\varepsilon_{n+1}-\varepsilon^p_n) $.
+
+For $m\neq 1$, we have 
+\begin{align}
+(H+E) |\Delta \varepsilon^p_n| + \left|\dfrac{\Delta \varepsilon_n^p}{\Delta t} \right|^m &=  Es(\varepsilon_{n+1}-\varepsilon^p_n ) - H \xi_n \\
+\end{align}
+We observe that the left hand side is positive, hence, for the right side to be positive, it must be that $s = \mathrm{sign}(\varepsilon_{n+1}-\varepsilon^p_n)$.
+Hence, 
+\begin{align}
+(H+E) |\Delta \varepsilon^p_n| + \left|\dfrac{\Delta \varepsilon_n^p}{\Delta t} \right|^m &=  E|\varepsilon_{n+1}-\varepsilon^p_n |- H \xi_n 
+\end{align}
+Iterative solver is 
+\begin{align}
+|\Delta \varepsilon^p_n|^{(k+1)} = \left( \Delta t \left( E|\varepsilon_{n+1}-\varepsilon^p_n |- H \xi_n - (H+E) |\Delta \varepsilon^p_n|^{(k)} \right) \right)^{\frac{1}{m}}
+\end{align}
+\subsection{Kinematic Hardening}
+\begin{align}
+\mathcal{W}(\varepsilon, \varepsilon^p) &= \dfrac{E}{2}(\varepsilon - \varepsilon^p)^2 + \dfrac{H}{2}(\varepsilon^p)^2\\
+\mathcal{D}(\dot{\varepsilon}^p) &= \dfrac{\sigma_y}{m+1}|\dot{\varepsilon}^p|^{1+m}
+\end{align}
+Stress and evolution of internal variable are given by 
+\begin{align}
+    \sigma &= E(\varepsilon - \varepsilon^p)\\
+    \sigma_y|\dot{\varepsilon^p}|^m \mathrm{sign}(\dot{\varepsilon^p}) &= E(\varepsilon - \varepsilon^p) - H \varepsilon^p\\
+    \dot{\varepsilon}^p &=\left|\dfrac{E(\varepsilon - \varepsilon^p) - H\varepsilon^p}{\sigma_y}\right|^{1/m} \mathrm{sign}(E(\varepsilon - \varepsilon^p) - H\varepsilon^p)
+\end{align}
+When $m=0$
+\begin{align}
+    \begin{cases}
+        \dot{\varepsilon^p} > 0 & \text{if } E(\varepsilon - \varepsilon^p) - H \varepsilon^p = \sigma_y\\
+        \dot{\varepsilon^p} < 0 & \text{if } E(\varepsilon - \varepsilon^p) - H \varepsilon^p = -\sigma_y\\
+        \dot{\varepsilon^p} = 0 & \text{if } -\sigma_y < E(\varepsilon - \varepsilon^p) - H \varepsilon^p < \sigma_y
+    \end{cases}
+\end{align}
+Sampling strain using OU process 
+\begin{align}
+    d\varepsilon = \mu(\theta - \varepsilon)dt + \sigma dW_t
+\end{align}
+Normalization for machine learning
+\begin{align}
+  \dfrac{\mathcal{W}}{E} = \dfrac{1}{2} (\varepsilon - \varepsilon^p)^2 + \dfrac{H}{2E}(\varepsilon^p)^2\\
+  \dfrac{\mathcal{D}}{E} = \dfrac{\sigma_y}{E(m+1)}|\dot{\varepsilon}^p|^{1+m}
+\end{align}
+\subsection{Normalization for energy learning}
+
+Let $\varepsilon_*$ and $\sigma_*$ denote characteristic strain and stress
+scales, respectively, and let $\varepsilon_{\rm ref}$ and
+$\sigma_{\rm ref}$ be the corresponding zero points.  These scales can be
+computed from the training trajectories (for example, as robust standard
+deviations or prescribed upper quantiles), but must then be held fixed for
+validation, testing, and deployment.  The normalized trajectory is
+\begin{align}
+    \widehat{\varepsilon}
+      &= \frac{\varepsilon-\varepsilon_{\rm ref}}{\varepsilon_*},
+    &
+    \widehat{\sigma}
+      &= \frac{\sigma-\sigma_{\rm ref}}{\sigma_*}.
+\end{align}
+The stress and strain scales need not be equal.  Instead, choosing the
+energy-density scale
+\begin{equation}
+    w_*=\sigma_*\varepsilon_*
+\end{equation}
+preserves the stress--strain power pairing.  Thus, if
+$\widehat{\mathcal{W}}$ is defined relative to the reference state by
+\begin{equation}
+    \widehat{\mathcal{W}}
+    =\frac{\mathcal{W}-\mathcal{W}_{\rm ref}
+      -\sigma_{\rm ref}(\varepsilon-\varepsilon_{\rm ref})}{w_*},
+\end{equation}
+then
+\begin{equation}
+    \frac{\partial\widehat{\mathcal{W}}}
+         {\partial\widehat{\varepsilon}}
+    =\widehat{\sigma},
+\end{equation}
+where $\mathcal{W}_{\rm ref}$ is an arbitrary constant.  For
+zero-referenced variables (or after consistently shifting the constitutive
+variables), the quadratic kinematic-hardening model gives
+\begin{align}
+    \widehat{\mathcal{W}}
+    &=\frac{\mathcal{W}}{\sigma_*\varepsilon_*}
+      =\frac{E\varepsilon_*}{2\sigma_*}
+       \left(\widehat{\varepsilon}
+             -\widehat{\varepsilon}^{\,p}\right)^2
+       +\frac{H\varepsilon_*}{2\sigma_*}
+        \left(\widehat{\varepsilon}^{\,p}\right)^2,
+    &
+    \widehat{\varepsilon}^{\,p}
+    &=\frac{\varepsilon^p-\varepsilon^p_{\rm ref}}{\varepsilon_*}.
+\end{align}
+
+If $t_*$ is a characteristic sampling time, normalize rates and the
+dissipation (or dissipation potential) by
+\begin{equation}
+    \widehat{\dot{\varepsilon}}^{\,p}
+      =\frac{t_*}{\varepsilon_*}\dot{\varepsilon}^{p},
+    \qquad
+    \widehat{\mathcal{D}}
+      =\frac{t_*}{\sigma_*\varepsilon_*}\mathcal{D}.
+\end{equation}
+For example,
+\begin{equation}
+    \widehat{\mathcal{D}}
+    =\frac{\sigma_y}{\sigma_*}\,
+      \frac{1}{m+1}
+      \left|\widehat{\dot{\varepsilon}}^{\,p}\right|^{1+m}.
+\end{equation}
+This normalization keeps all learned inputs, outputs, energy densities, and
+dissipation values dimensionless while retaining the correct energetic
+conjugacy.  The learned functions can be returned to physical units using
+$\mathcal{W}=w_*\widehat{\mathcal{W}}$ and
+$\mathcal{D}=(\sigma_*\varepsilon_*/t_*)\widehat{\mathcal{D}}$.
+
+\subsection{Multidimensional extension}
+
+For a multidimensional material, collect the stress and strain components in
+vectors $\boldsymbol{\sigma},\boldsymbol{\varepsilon}\in\mathbb{R}^d$, with
+energetic pairing
+$\boldsymbol{\sigma}^{\mathsf T}\dot{\boldsymbol{\varepsilon}}$.  Let
+$\mathbf{E}_*$ and $\mathbf{S}_*$ be nonsingular scaling matrices for strain
+and stress, respectively.  The normalized vectors are
+\begin{align}
+    \widehat{\boldsymbol{\varepsilon}}
+      &=\mathbf{E}_*^{-1}
+        \left(\boldsymbol{\varepsilon}
+              -\boldsymbol{\varepsilon}_{\rm ref}\right),
+    &
+    \widehat{\boldsymbol{\sigma}}
+      &=\mathbf{S}_*^{-1}
+        \left(\boldsymbol{\sigma}
+              -\boldsymbol{\sigma}_{\rm ref}\right).
+\end{align}
+Choose the operators such that
+\begin{equation}
+    \mathbf{S}_*^{\mathsf T}\mathbf{E}_*=w_*\mathbf{I},
+\end{equation}
+where $w_*$ is a scalar energy-density scale.  This condition preserves the
+work pairing because
+\begin{equation}
+    \boldsymbol{\sigma}^{\mathsf T}
+    \dot{\boldsymbol{\varepsilon}}
+    =w_*\,
+      \widehat{\boldsymbol{\sigma}}^{\mathsf T}
+      \dot{\widehat{\boldsymbol{\varepsilon}}}
+\end{equation}
+after removal of the reference terms.  Consequently, defining the
+reference-subtracted energy by
+\begin{equation}
+    \widehat{\mathcal{W}}
+    =\frac{\mathcal{W}-\mathcal{W}_{\rm ref}
+      -\boldsymbol{\sigma}_{\rm ref}^{\mathsf T}
+       (\boldsymbol{\varepsilon}
+        -\boldsymbol{\varepsilon}_{\rm ref})}{w_*},
+\end{equation}
+gives the exact constitutive relation
+\begin{equation}
+    \nabla_{\widehat{\boldsymbol{\varepsilon}}}
+       \widehat{\mathcal{W}}
+    =\widehat{\boldsymbol{\sigma}}.
+\end{equation}
+
+Internal variables are normalized with the same strain scaling, for example
+\begin{equation}
+    \widehat{\boldsymbol{\varepsilon}}^{\,p}
+      =\mathbf{E}_*^{-1}
+       \left(\boldsymbol{\varepsilon}^{p}
+             -\boldsymbol{\varepsilon}^{p}_{\rm ref}\right),
+    \qquad
+    \widehat{\dot{\boldsymbol{\varepsilon}}}^{\,p}
+      =t_*\,\dot{\widehat{\boldsymbol{\varepsilon}}}^{\,p}
+      =t_*\,\mathbf{E}_*^{-1}
+       \dot{\boldsymbol{\varepsilon}}^{p}.
+\end{equation}
+The dissipation potential is then normalized as
+\begin{equation}
+    \widehat{\mathcal{D}}
+      =\frac{t_*}{w_*}\mathcal{D},
+\end{equation}
+so that the physical dissipation rate is recovered from
+$\mathcal{D}=(w_*/t_*)\widehat{\mathcal{D}}$.  In practice, the diagonal
+entries or eigenvalues of $\mathbf{E}_*$ and $\mathbf{S}_*$ can be estimated
+from the corresponding components or principal directions of the training
+trajectories.  They must be fixed afterward and reused for validation,
+testing, and deployment.
+
+\subsection{Independent stress and strain normalization}
+
+The stress and strain scaling matrices can also be chosen independently,
+without imposing
+$\mathbf{S}_*^{\mathsf T}\mathbf{E}_*=w_*\mathbf{I}$.  Define
+\begin{align}
+    \widehat{\boldsymbol{\varepsilon}}
+      &=\mathbf{E}_*^{-1}
+        \left(\boldsymbol{\varepsilon}
+              -\boldsymbol{\varepsilon}_{\rm ref}\right),
+    &
+    \widehat{\boldsymbol{\sigma}}
+      &=\mathbf{S}_*^{-1}
+        \left(\boldsymbol{\sigma}
+              -\boldsymbol{\sigma}_{\rm ref}\right),
+\end{align}
+and let
+\begin{equation}
+    \mathbf{G}_*
+      =\frac{1}{w_*}\mathbf{E}_*^{\mathsf T}\mathbf{S}_*
+\end{equation}
+be the normalization-induced metric operator.  With
+$\widehat{\mathcal{W}}$ defined using the reference-subtracted energy from
+the previous section, the chain rule gives
+\begin{equation}
+    \nabla_{\widehat{\boldsymbol{\varepsilon}}}
+       \widehat{\mathcal{W}}
+    =\frac{1}{w_*}\mathbf{E}_*^{\mathsf T}
+       \left(\boldsymbol{\sigma}
+             -\boldsymbol{\sigma}_{\rm ref}\right)
+    =\mathbf{G}_*\widehat{\boldsymbol{\sigma}}.
+\end{equation}
+Therefore, the normalized stress is recovered using the generalized
+derivative associated with this metric:
+\begin{equation}
+    \widehat{\boldsymbol{\sigma}}
+    =\operatorname{grad}_{\mathbf{G}_*}
+       \widehat{\mathcal{W}}
+    :=\mathbf{G}_*^{-1}
+      \nabla_{\widehat{\boldsymbol{\varepsilon}}}
+       \widehat{\mathcal{W}}.
+\end{equation}
+Equivalently, the variation of the normalized energy can be written as
+\begin{equation}
+    \delta\widehat{\mathcal{W}}
+      =\widehat{\boldsymbol{\sigma}}^{\mathsf T}
+       \mathbf{G}_*^{\mathsf T}
+       \delta\widehat{\boldsymbol{\varepsilon}}.
+\end{equation}
+This formulation allows each component of stress and strain to be scaled
+according to its own variability or physical unit while retaining the exact
+stress--strain conjugacy.  If $\mathbf{G}_*$ is symmetric positive definite,
+it is a conventional inner-product metric.  For general independent
+matrices, $\mathbf{G}_*$ is instead a nonsymmetric metric operator; the
+generalized derivative above remains well-defined whenever $\mathbf{G}_*$ is
+invertible.  The same operator should be used consistently when training
+energy gradients and when converting the learned gradient back to physical
+stress.
+
+\section{Invertible Neural Network}
+Consider the input convex neural network with one hidden layer 
+\begin{align}
+y &= P^{\top} h + c \\
+[h]_{ij} &= W_{ji}v_i, \quad i = 1, \ldots, h; j = 1, \ldots, n \\
+v &= \sigma(W^{\top}x + b)
+\end{align}
+where $x \in \mathrm{R}^n$, $W \in \mathrm{R}^{n \times h}$, $b \in \mathrm{R}^h$, $h \in \mathrm{R}^{h \times n}$, $P \in \mathrm{R}_{+}^h$, $c \in \mathrm{R}^n$
+\end{document}
