@@ -105,6 +105,7 @@ class NormalizedVariationalODE(pl.LightningModule):
             Dissipation(xi_dim=xi_dim),
         )
         self.loss = nn.MSELoss()
+        self.automatic_optimization = False
 
     def forward(self, strain: Tensor) -> tuple[Tensor, Tensor]:
         return self.solver.solve(
@@ -121,9 +122,20 @@ class NormalizedVariationalODE(pl.LightningModule):
         self, batch: tuple[Tensor, Tensor, Tensor], batch_idx: int
     ) -> Tensor:
         strain, _, stress = batch
-        _, normalized_prediction = self(strain)
         normalized_target = self.normalization.normalize_stress(stress)
-        loss = self.loss(normalized_prediction, normalized_target)
+        normalized_strain = self.normalization.normalize_strain(strain)
+        optimizer = self.optimizers()
+        optimizer.zero_grad()
+        loss, gradients, _, _ = self.solver.compute_adjoint_gradients(
+            normalized_strain,
+            normalized_target,
+            dt=self.hparams.dt,
+        )
+        normalization = normalized_target.numel()
+        for parameter, gradient in zip(self.solver.parameters(), gradients):
+            parameter.grad = gradient / normalization
+        optimizer.step()
+        loss = loss / normalization
         self.log("loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         return loss
 

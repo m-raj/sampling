@@ -99,7 +99,7 @@ class InvertibleCurlFreeNetwork(nn.Module):
     @staticmethod
     def weight_activation(x: Tensor) -> Tensor:
         """Constrain invertible-map weights to be strictly positive."""
-        return nn.functional.softplus(x)
+        return torch.abs(x)
 
 
 class Energy(nn.Module):
@@ -152,7 +152,9 @@ class Dissipation(nn.Module):
     """Direct dissipation-rate map evaluated at ``-d``."""
 
     def __init__(
-        self, xi_dim: int = 1,         hidden_size: int = 64,
+        self,
+        xi_dim: int = 1,
+        hidden_size: int = 64,
     ) -> None:
         super().__init__()
         if xi_dim < 1:

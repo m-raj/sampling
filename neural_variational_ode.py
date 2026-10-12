@@ -61,7 +61,7 @@ class InputConvexNetwork(nn.Module):
     def __init__(
         self,
         input_size: int,
-        hidden_sizes: Sequence[int] = (64),
+        hidden_sizes: Sequence[int] = (64,),
         *,
         bias: bool = True,
     ) -> None:
@@ -186,7 +186,7 @@ class Energy(nn.Module):
         self,
         e_dim: int = 1,
         xi_dim: int = 1,
-        hidden_sizes: Sequence[int] = (64),
+        hidden_sizes: Sequence[int] = (64,),
     ) -> None:
         super().__init__()
         if e_dim < 1 or xi_dim < 1:
@@ -232,7 +232,7 @@ class Dissipation(nn.Module):
     """Neural scalar dissipation potential D(xi_dot)."""
 
     def __init__(
-        self, xi_dim: int = 1, hidden_sizes: Sequence[int] = (64)
+        self, xi_dim: int = 1, hidden_sizes: Sequence[int] = (64,)
     ) -> None:
         super().__init__()
         if xi_dim < 1:
