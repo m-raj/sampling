@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import os
 from datetime import datetime, timezone
 
 import numpy as np
@@ -210,7 +211,7 @@ def build_dataset(args: argparse.Namespace) -> dict:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--output", default="kinematic_hardening_dataset.pt")
+    parser.add_argument("--output", default="datasets/kinematic_hardening_dataset.pt")
     # OU process (shared by train and validation).
     parser.add_argument("--n-trajectories", type=int, default=64)
     parser.add_argument("--n-val", type=int, default=16)
@@ -239,6 +240,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     dataset = build_dataset(args)
+    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     torch.save(dataset, args.output)
     print(f"Saved {dataset['metadata']['shapes']} to {args.output}")
 

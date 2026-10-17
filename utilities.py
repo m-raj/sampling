@@ -102,3 +102,58 @@ def relative_l2_error(
     if reduction == "none":
         return relative_errors
     raise ValueError(f"reduction must be 'mean' or 'none', got {reduction!r}.")
+
+
+# Matplotlib settings shared by all figures. Requires a LaTeX installation
+# because ``text.usetex`` is enabled.
+PLOT_PARAMS = {
+    "font.family": "serif",
+    "font.sans-serif": "Times New Roman",
+    "font.size": 14,
+    "lines.linewidth": 2,
+    "xtick.top": True,
+    "xtick.minor.visible": True,
+    "ytick.minor.visible": True,
+    "xtick.direction": "in",
+    "xtick.major.top": True,
+    "xtick.major.bottom": True,
+    "xtick.minor.top": True,
+    "xtick.minor.bottom": True,
+    "xtick.minor.width": 1,
+    "xtick.major.width": 1,
+    "xtick.minor.size": 3,
+    "xtick.major.size": 6,
+    "ytick.right": True,
+    "ytick.direction": "in",
+    "ytick.major.left": True,
+    "ytick.major.right": True,
+    "ytick.minor.left": True,
+    "ytick.minor.right": True,
+    "ytick.minor.width": 1,
+    "ytick.major.width": 1,
+    "ytick.minor.size": 3,
+    "ytick.major.size": 6,
+    "legend.frameon": False,
+    "lines.markersize": 4.0,
+    "axes.formatter.use_mathtext": True,
+    "text.latex.preamble": r"\usepackage{amsmath}",
+    "text.usetex": True,
+}
+
+
+def apply_plot_style() -> None:
+    """Apply :data:`PLOT_PARAMS` to matplotlib."""
+    import matplotlib.pyplot as plt
+
+    plt.rcParams.update(PLOT_PARAMS)
+
+
+def save_pdf(fig, path: str) -> None:
+    """Save ``fig`` as a PDF with a tight layout and close it."""
+    import matplotlib.pyplot as plt
+
+    if not path.endswith(".pdf"):
+        path = f"{path}.pdf"
+    fig.tight_layout()
+    fig.savefig(path, bbox_inches="tight")
+    plt.close(fig)
