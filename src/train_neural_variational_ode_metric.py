@@ -20,7 +20,7 @@ from lightning.pytorch.plugins.environments import LightningEnvironment
 from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from neural_variational_ode import Dissipation, Energy, VariationalODESolver
+from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
 
 
 def load_matrix(path: str | Path) -> Tensor:

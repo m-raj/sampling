@@ -28,8 +28,8 @@ import numpy as np
 import torch
 from tqdm.auto import tqdm
 
-from ou_trajectories import generate_ou_trajectories, smooth_ou_trajectories
-from true_constitutive_law import KinematicHardeningPlasticity
+from src.ou_trajectories import generate_ou_trajectories, smooth_ou_trajectories
+from src.true_constitutive_law import KinematicHardeningPlasticity
 
 TEST_PATTERNS = ("tension_cycles", "tension_compression", "growing_tension_compression")
 

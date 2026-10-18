@@ -26,7 +26,7 @@ import numpy as np
 import torch
 
 from train_kinematic_hardening import AdjointVariationalODE, run_dir_from_checkpoint
-from utilities import apply_plot_style, relative_l2_error, save_pdf
+from src.utilities import apply_plot_style, relative_l2_error, save_pdf
 
 SPLITS = ("train", "validation", "test")
 # First three slots of the dataviz skill's validated categorical palette.

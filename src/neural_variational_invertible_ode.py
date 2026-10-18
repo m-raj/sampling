@@ -102,7 +102,7 @@ class InvertibleCurlFreeNetwork(nn.Module):
         return torch.abs(x)
 
 
-class Energy(nn.Module):
+class InvertibleEnergy(nn.Module):
     """Direct elastic stress and inelastic driving-force maps.
 
     The associated potential split is
@@ -148,7 +148,7 @@ class Energy(nn.Module):
         return sigma, d
 
 
-class Dissipation(nn.Module):
+class InvertibleDissipation(nn.Module):
     """Direct dissipation-rate map evaluated at ``-d``."""
 
     def __init__(
@@ -174,10 +174,12 @@ class Dissipation(nn.Module):
         return self.network(negative_d)
 
 
-class VariationalODESolver(nn.Module):
+class InvertibleVariationalODESolver(nn.Module):
     """Integrate the neural variational ODE for a batch of e trajectories."""
 
-    def __init__(self, energy: Energy, dissipation: Dissipation) -> None:
+    def __init__(
+        self, energy: InvertibleEnergy, dissipation: InvertibleDissipation
+    ) -> None:
         super().__init__()
         if energy.e_dim < 1 or energy.xi_dim != dissipation.xi_dim:
             raise ValueError("Energy and dissipation dimensions are incompatible.")

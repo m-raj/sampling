@@ -22,8 +22,8 @@ except ImportError as exc:  # pragma: no cover - depends on the local FEM stack
         "This solver requires legacy FEniCS/DOLFIN: install the fenics package."
     ) from exc
 
-from neural_variational_ode import Dissipation, Energy, VariationalODESolver
-from true_constitutive_law import TrueConstitutiveLaw
+from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
+from src.true_constitutive_law import TrueConstitutiveLaw
 
 
 class NeuralConstitutiveLaw:

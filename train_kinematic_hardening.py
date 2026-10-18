@@ -41,8 +41,39 @@ from lightning.pytorch.loggers import CSVLogger
 from torch import Tensor
 from torch.utils.data import DataLoader, TensorDataset
 
-from neural_variational_ode import Dissipation, Energy, VariationalODESolver
-from utilities import apply_plot_style, relative_l2_error, save_pdf
+from src.neural_variational_invertible_ode import (
+    InvertibleDissipation,
+    InvertibleEnergy,
+    InvertibleVariationalODESolver,
+)
+from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
+from src.utilities import apply_plot_style, relative_l2_error, save_pdf
+
+MODELS = ("potential", "invertible")
+
+
+def build_solver(model: str, hidden_sizes: tuple[int, ...]):
+    """Variational ODE solver of the requested type.
+
+    ``potential``: input-convex potentials W and D, differentiated with
+    autograd (``neural_variational_ode``).
+    ``invertible``: direct invertible curl-free maps for the stress, driving
+    force and xi_dot (``neural_variational_invertible_ode``); these have a
+    single hidden layer.
+    """
+    if model == "potential":
+        return VariationalODESolver(
+            Energy(e_dim=1, xi_dim=1, hidden_sizes=hidden_sizes),
+            Dissipation(xi_dim=1, hidden_sizes=hidden_sizes),
+        )
+    if model == "invertible":
+        if len(hidden_sizes) != 1:
+            raise ValueError("The invertible model has one hidden layer; pass one --hidden-sizes value.")
+        return InvertibleVariationalODESolver(
+            InvertibleEnergy(e_dim=1, xi_dim=1, hidden_size=hidden_sizes[0]),
+            InvertibleDissipation(xi_dim=1, hidden_size=hidden_sizes[0]),
+        )
+    raise ValueError(f"model must be one of {MODELS}, got {model!r}.")
 
 
 class AdjointVariationalODE(pl.LightningModule):
@@ -55,15 +86,13 @@ class AdjointVariationalODE(pl.LightningModule):
         learning_rate: float = 1e-2,
         dataset_path: str | None = None,
         dataset_metadata: dict | None = None,
+        model: str = "potential",
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
         # Adjoint gradients are assigned to ``.grad`` by hand.
         self.automatic_optimization = False
-        self.solver = VariationalODESolver(
-            Energy(e_dim=1, xi_dim=1, hidden_sizes=hidden_sizes),
-            Dissipation(xi_dim=1, hidden_sizes=hidden_sizes),
-        )
+        self.solver = build_solver(model, tuple(hidden_sizes))
 
     def training_step(self, batch: tuple[Tensor, Tensor], batch_idx: int) -> None:
         strain_batch, stress_batch = batch
@@ -164,6 +193,9 @@ def parse_args() -> argparse.Namespace:
                         help="Every new training gets its own timestamped folder in here.")
     parser.add_argument("--run-name", default=None,
                         help="Optional suffix for the run folder name.")
+    parser.add_argument("--model", choices=MODELS, default="potential",
+                        help="potential: input-convex W and D (neural_variational_ode); "
+                        "invertible: invertible curl-free maps (neural_variational_invertible_ode).")
     # The notebook used (64, 64), but with the current squared-ReLU
     # InputConvexNetwork the forward-Euler solve diverges within a few steps.
     parser.add_argument("--hidden-sizes", type=int, nargs="+", default=[64])
@@ -200,12 +232,19 @@ def main() -> None:
     train_loader = split_loader(dataset["train"], args.batch_size, shuffle=True)
     val_loader = split_loader(dataset["validation"], args.batch_size, shuffle=False)
 
+    model_type, hidden_sizes = args.model, tuple(args.hidden_sizes)
+    if args.resume:
+        # A resumed run keeps the architecture it was trained with.
+        saved = torch.load(args.resume, map_location="cpu", weights_only=False)["hyper_parameters"]
+        model_type = saved.get("model", "potential")
+        hidden_sizes = tuple(saved["hidden_sizes"])
     model = AdjointVariationalODE(
         dt=metadata["ou"]["dt"],
-        hidden_sizes=tuple(args.hidden_sizes),
+        hidden_sizes=hidden_sizes,
         learning_rate=args.lr,
         dataset_path=os.path.abspath(args.dataset),
         dataset_metadata=metadata,
+        model=model_type,
     )
 
     callbacks = [

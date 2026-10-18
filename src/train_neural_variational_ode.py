@@ -14,9 +14,9 @@ from torch import Tensor, nn
 from torch.utils.data import DataLoader, TensorDataset
 from lightning.pytorch.plugins.environments import LightningEnvironment
 
-from neural_variational_ode import Dissipation, Energy, VariationalODESolver
-from ou_trajectories import generate_ou_trajectories
-from xi_sigma import compute_xi_and_sigma
+from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
+from src.ou_trajectories import generate_ou_trajectories
+from src.xi_sigma import compute_xi_and_sigma
 import numpy as np
 
 
