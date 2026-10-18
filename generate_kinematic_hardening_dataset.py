@@ -224,16 +224,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-seed", type=int, default=43)
     # Smoothing.
-    parser.add_argument("--mollifier-window", type=int, default=21)
+    parser.add_argument("--mollifier-window", type=int, default=601)
     # Test loading programs, as fractions of the training strain and rate scales.
     parser.add_argument("--test-tension-fractions", type=float, nargs="+", default=[0.5, 1.0])
     parser.add_argument("--test-compression-fractions", type=float, nargs="+", default=[0.5, 1.0])
     parser.add_argument("--test-rate-fractions", type=float, nargs="+", default=[0.25, 0.5, 1.0])
     # Kinematic-hardening model.
-    parser.add_argument("--E", type=float, default=1.0)
+    parser.add_argument("--E", type=float, default=1000.0)
     parser.add_argument("--H", type=float, default=1.0)
-    parser.add_argument("--sigma-y", type=float, default=1.0)
-    parser.add_argument("--rate-exponent", type=float, default=0.3)
+    parser.add_argument("--sigma-y", type=float, default=0.5)
+    parser.add_argument("--rate-exponent", type=float, default=0.5)
     return parser.parse_args()
 
 

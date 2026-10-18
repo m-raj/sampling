@@ -149,11 +149,15 @@ def apply_plot_style() -> None:
 
 
 def save_pdf(fig, path: str) -> None:
-    """Save ``fig`` as a PDF with a tight layout and close it."""
+    """Save ``fig`` as a PDF with square axes and a tight layout, then close it."""
     import matplotlib.pyplot as plt
 
     if not path.endswith(".pdf"):
         path = f"{path}.pdf"
+    # Every plot area is square. Secondary axes (e.g. a top epoch axis) are
+    # children of their parent axes, not in fig.axes, and follow its box.
+    for axis in fig.axes:
+        axis.set_box_aspect(1)
     fig.tight_layout()
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
