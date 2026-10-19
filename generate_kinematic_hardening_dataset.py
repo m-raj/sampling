@@ -1,7 +1,6 @@
 """Generate the kinematic-hardening train, validation and test datasets.
 
-Train and validation follow the data pipeline of
-``kinematic_hardening_normalized.ipynb`` with the same OU parameters but
+Train and validation follow the following pipeline with the same OU parameters but
 different seeds:
 
 1. sample strain trajectories with an OU process,
