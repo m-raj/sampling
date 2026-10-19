@@ -32,8 +32,6 @@ from datetime import datetime
 
 import lightning.pytorch as pl
 import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.ticker import FuncFormatter, NullFormatter
@@ -378,6 +376,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    # Scripts only save figures; set the backend here rather than at import
+    # time so importing this module (e.g. in a notebook) keeps its backend.
+    matplotlib.use("Agg")
     args = parse_args()
     pl.seed_everything(args.seed)
 

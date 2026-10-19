@@ -77,7 +77,11 @@ class InputConvexNetwork(nn.Module):
         previous_size = input_size
         for layer_index, hidden_size in enumerate(hidden_sizes):
             self.input_layers.append(
-                nn.Linear(input_size, hidden_size, bias=bias)
+                nn.Linear(
+                    input_size,
+                    hidden_size,
+                    bias=True,
+                )
             )
             if layer_index == 0:
                 self.state_layers.append(nn.Identity())
@@ -87,7 +91,7 @@ class InputConvexNetwork(nn.Module):
                 )
             previous_size = hidden_size
 
-        self.output_input = nn.Linear(input_size, 1, bias=bias)
+        self.output_input = nn.Linear(input_size, 1, bias=False)
         self.output_state = (
             _PositiveLinear(previous_size, 1) if hidden_sizes else None
         )
@@ -108,70 +112,6 @@ class InputConvexNetwork(nn.Module):
         if state is not None and self.output_state is not None:
             output = output + self.output_state(state)
         return output.squeeze(-1)
-
-
-class InvertibleNeuralNetwork(nn.Module):
-    """Single-layer curl-free map with convexity-preserving initialization.
-
-    When ``invertible`` is true, the hidden weights are parameterized by a
-    smooth positive function, as required for a convex potential gradient.
-    """
-
-    def __init__(
-        self,
-        input_size: int,
-        hidden_size: int,
-        *,
-        bias: bool = True,
-        invertible: bool = False,
-    ) -> None:
-        super().__init__()
-        if input_size < 1 or hidden_size < 1:
-            raise ValueError("input_size and hidden_size must be positive.")
-
-        self.A = nn.Parameter(torch.empty(input_size, hidden_size))
-        nn.init.xavier_uniform_(self.A)
-
-        if bias:
-            self.bias: nn.Parameter | None = nn.Parameter(
-                torch.zeros(hidden_size)
-            )
-        else:
-            self.register_parameter("bias", None)
-
-        # Initialize the effective positive weights near one, rather than
-        # initializing their unconstrained parameters near zero.  This avoids
-        # a badly scaled map after the softplus transformation.
-        positive_weight = torch.ones(hidden_size, dtype=torch.float32)
-        self.P = nn.Parameter(self.inverse_softplus(positive_weight))
-        self.activation = nn.Softplus()
-        self.invertible = invertible
-
-    @staticmethod
-    def inverse_softplus(value: Tensor) -> Tensor:
-        """Map strictly positive effective weights to raw parameters."""
-        if torch.any(value <= 0):
-            raise ValueError("value must be strictly positive.")
-        return value + torch.log(-torch.expm1(-value))
-
-    def forward(self, x: Tensor) -> Tensor:
-        """Evaluate the curl-free map for inputs ending in ``input_size``."""
-        if x.shape[-1] != self.A.shape[0]:
-            raise ValueError(
-                f"Expected input dimension {self.A.shape[0]}, "
-                f"got {x.shape[-1]}."
-            )
-        hidden = self.activation(
-            torch.matmul(x, self.A)
-            + (self.bias if self.bias is not None else 0.0)
-        )
-        weights = self.weight_activation(self.P) if self.invertible else self.P
-        return torch.matmul(hidden * weights, self.A.mT)
-
-    @staticmethod
-    def weight_activation(x: Tensor) -> Tensor:
-        """Constrain invertible-map weights to be strictly positive."""
-        return nn.functional.softplus(x)
 
 
 class Energy(nn.Module):
@@ -199,10 +139,10 @@ class Energy(nn.Module):
         self.e_dim = e_dim
         self.xi_dim = xi_dim
         self.elastic_network = InputConvexNetwork(
-            input_size=e_dim, hidden_sizes=hidden_sizes, bias=False
+            input_size=e_dim, hidden_sizes=hidden_sizes, bias=True
         )
         self.inelastic_network = InputConvexNetwork(
-            input_size=xi_dim, hidden_sizes=hidden_sizes, bias=False
+            input_size=xi_dim, hidden_sizes=hidden_sizes, bias=True
         )
 
     def forward(self, e: Tensor, xi: Tensor) -> Tensor:
@@ -239,7 +179,7 @@ class Dissipation(nn.Module):
             raise ValueError("xi_dim must be positive.")
         self.xi_dim = xi_dim
         self.network = InputConvexNetwork(
-            input_size=xi_dim, hidden_sizes=hidden_sizes
+            input_size=xi_dim, hidden_sizes=hidden_sizes, bias=False
         )
 
     def forward(self, xi_dot: Tensor) -> Tensor:

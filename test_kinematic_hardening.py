@@ -19,8 +19,6 @@ import argparse
 import os
 
 import matplotlib
-
-matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -30,7 +28,7 @@ from src.utilities import apply_plot_style, relative_l2_error, save_pdf
 
 SPLITS = ("train", "validation", "test")
 # First three slots of the dataviz skill's validated categorical palette.
-BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+BLUE, ORANGE, AQUA = "#1f75de", "#eb6834", "#1baf7a"
 TRUE_STYLE = {"color": BLUE, "linestyle": "-", "linewidth": 2.0, "label": "true"}
 PREDICTED_STYLE = {"color": ORANGE, "linestyle": "--", "linewidth": 2.0, "label": "predicted"}
 SPLIT_COLORS = {"train": BLUE, "validation": ORANGE, "test": AQUA}
@@ -49,14 +47,14 @@ def predict_stress(model: AdjointVariationalODE, strain: torch.Tensor, batch_siz
     return np.concatenate(predictions)
 
 
-def describe_program(program: dict, strain: np.ndarray, separator: str = ", ") -> str:
+def describe_program(program: dict, strain: np.ndarray) -> str:
     # Report the strain range actually reached: slow programs may end before
     # reaching their nominal peaks.
     pattern = program["pattern"].replace("_", " ")
-    return separator.join((
-        pattern,
-        f"rate {program['strain_rate']:.3g}, strain [{strain.min():.3g}, {strain.max():.3g}]",
-    ))
+    return (
+        f"{pattern}, rate {program['strain_rate']:.3g}, "
+        f"strain [{strain.min():.3g}, {strain.max():.3g}]"
+    )
 
 
 def representative_samples(errors: np.ndarray) -> dict[str, int]:
@@ -75,14 +73,17 @@ def comparison_figure(
     errors: np.ndarray,
     programs: list[dict],
 ) -> plt.Figure:
-    """One square panel per representative sample: true vs predicted stress."""
-    fig, axes = plt.subplots(1, len(samples), figsize=(5.5 * len(samples), 6.5), squeeze=False)
-    for axis, (name, index) in zip(axes[0], samples.items()):
+    """One row per representative sample: true vs predicted stress."""
+
+    fig, axes = plt.subplots(
+        len(samples), 1, figsize=(8, 3.2 * len(samples)), squeeze=False
+    )
+    for axis, (name, index) in zip(axes[:, 0], samples.items()):
         axis.plot(x_values[index], true_stress[index], **TRUE_STYLE)
         axis.plot(x_values[index], predicted_stress[index], **PREDICTED_STYLE)
         axis.set_title(
             f"{name.capitalize()} (test no. {index}, rel. error {errors[index]:.3g})\n"
-            f"{describe_program(programs[index], strain[index], separator=chr(10))}"
+            f"{describe_program(programs[index], strain[index])}"
         )
         axis.set_xlabel(x_label)
         axis.set_ylabel("Stress")
@@ -92,7 +93,7 @@ def comparison_figure(
 
 
 def error_boxplot_figure(errors: dict[str, np.ndarray]) -> plt.Figure:
-    fig, ax = plt.subplots(figsize=(5.5, 5.5))
+    fig, ax = plt.subplots(figsize=(6, 4.5))
     boxes = ax.boxplot(
         [errors[split] for split in SPLITS],
         tick_labels=[f"{split}\n(n={len(errors[split])})" for split in SPLITS],
@@ -138,6 +139,9 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    # Scripts only save figures; set the backend here rather than at import
+    # time so importing this module (e.g. in a notebook) keeps its backend.
+    matplotlib.use("Agg")
     args = parse_args()
     apply_plot_style()
     output_dir = args.output_dir or os.path.join(run_dir_from_checkpoint(args.checkpoint), "plots")
