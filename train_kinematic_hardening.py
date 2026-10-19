@@ -16,6 +16,10 @@ Every new training gets its own folder ``<runs-dir>/<timestamp>[_name]``:
     checkpoints/   last.ckpt, best-epoch=N.ckpt, interrupted.ckpt
     logs/          version_*/metrics.csv and hparams.yaml, one per (re)start
     plots/         training_curves.pdf, and test_kinematic_hardening.py figures
+    train.log      console output of every (re)start, with timestamps
+
+The progress bar only appears in an interactive terminal; batch jobs such as
+SLURM get a log line every ``--log-every`` epochs instead.
 
 Resuming continues in the folder of the given checkpoint.
 """
@@ -24,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import glob
+import logging
 import os
 import signal
 import time
@@ -42,7 +47,9 @@ from lightning.pytorch.loggers import CSVLogger
 from torch import Tensor
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm.auto import tqdm
+from tqdm.contrib.logging import logging_redirect_tqdm
 
+from src.logging_utils import progress_bars_enabled, setup_logging
 from src.neural_variational_invertible_ode import (
     InvertibleDissipation,
     InvertibleEnergy,
@@ -52,6 +59,8 @@ from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
 from src.utilities import apply_plot_style, relative_l2_error, save_pdf
 
 MODELS = ("potential", "invertible")
+
+logger = logging.getLogger(__name__)
 
 
 def build_solver(model: str, hidden_size: int):
@@ -159,7 +168,12 @@ def split_loader(split: dict, batch_size: int, shuffle: bool) -> DataLoader:
 
 
 class EpochProgressBar(Callback):
-    """A progress bar over all epochs, with the latest metrics on the line below."""
+    """Training progress: a bar over all epochs with the latest metrics below it,
+    plus a log line every ``log_every`` epochs and after each validation.
+
+    The bar only appears in an interactive terminal or notebook; batch jobs
+    (e.g. SLURM) get just the log lines.
+    """
 
     METRICS = {
         "train_loss": "loss",
@@ -167,9 +181,16 @@ class EpochProgressBar(Callback):
         "val_stress_rel_error": "val err",
     }
 
+    def __init__(self, log_every: int = 10) -> None:
+        self.log_every = log_every
+        self.validated = False
+
     def on_train_start(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
+        self.start_time = time.monotonic()
+        if not progress_bars_enabled():
+            return
         # A resumed run starts part-way through the total number of epochs.
         self.bar = tqdm(
             total=trainer.max_epochs,
@@ -182,26 +203,39 @@ class EpochProgressBar(Callback):
         # A bar-less tqdm line that only displays text, kept below the bar.
         self.status = tqdm(total=0, bar_format="{desc}", position=1)
 
-    def _show_metrics(self, trainer: pl.Trainer) -> None:
+    def _metrics_text(self, trainer: pl.Trainer) -> str:
         metrics = trainer.callback_metrics
-        self.status.set_description_str(
-            ", ".join(
-                f"{label} = {float(metrics[name]):.3e}"
-                for name, label in self.METRICS.items()
-                if name in metrics
-            )
+        return ", ".join(
+            f"{label} = {float(metrics[name]):.3e}"
+            for name, label in self.METRICS.items()
+            if name in metrics
         )
+
+    def _show_metrics(self, trainer: pl.Trainer) -> None:
+        if hasattr(self, "status"):
+            self.status.set_description_str(self._metrics_text(trainer))
 
     def on_validation_epoch_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
         # Validation runs only every --val-every epochs; show it when it does.
-        if hasattr(self, "bar") and not trainer.sanity_checking:
+        if not trainer.sanity_checking:
+            self.validated = True
             self._show_metrics(trainer)
 
     def on_train_epoch_end(
         self, trainer: pl.Trainer, pl_module: pl.LightningModule
     ) -> None:
+        epoch = trainer.current_epoch + 1
+        if epoch % self.log_every == 0 or self.validated or epoch == trainer.max_epochs:
+            logger.info(
+                "epoch %d/%d (%.0f s): %s",
+                epoch, trainer.max_epochs, time.monotonic() - self.start_time,
+                self._metrics_text(trainer),
+            )
+        self.validated = False
+        if not hasattr(self, "bar"):
+            return
         self._show_metrics(trainer)
         self.bar.update(1)
         # Close before Lightning prints its "max_epochs reached" message, which
@@ -368,6 +402,12 @@ def parse_args() -> argparse.Namespace:
         default=100,
         help="Evaluate the validation split every N epochs.",
     )
+    parser.add_argument(
+        "--log-every",
+        type=int,
+        default=10,
+        help="Log the training metrics (to the console and train.log) every N epochs.",
+    )
     parser.add_argument("--accelerator", default="cpu")
     parser.add_argument("--resume", default=None,
                         help="Checkpoint to continue from, e.g. runs/<run>/checkpoints/last.ckpt "
@@ -380,15 +420,17 @@ def main() -> None:
     # time so importing this module (e.g. in a notebook) keeps its backend.
     matplotlib.use("Agg")
     args = parse_args()
+
+    run_dir = run_dir_from_checkpoint(args.resume) if args.resume else new_run_dir(args.runs_dir, args.run_name)
+    checkpoint_dir = os.path.join(run_dir, "checkpoints")
+    # A resumed run appends to the same train.log.
+    setup_logging(os.path.join(run_dir, "train.log"))
+    logger.info("Run folder: %s", os.path.abspath(run_dir))
     pl.seed_everything(args.seed)
 
     # Lightning handles Ctrl-C and SIGTERM; treat a closed terminal the same way.
     if hasattr(signal, "SIGHUP"):
         signal.signal(signal.SIGHUP, signal.default_int_handler)
-
-    run_dir = run_dir_from_checkpoint(args.resume) if args.resume else new_run_dir(args.runs_dir, args.run_name)
-    checkpoint_dir = os.path.join(run_dir, "checkpoints")
-    print(f"Run folder: {os.path.abspath(run_dir)}")
 
     dataset = torch.load(args.dataset, weights_only=False)
     metadata = dataset["metadata"]
@@ -419,7 +461,7 @@ def main() -> None:
             every_n_epochs=args.checkpoint_every,
         ),
         OnExceptionCheckpoint(dirpath=checkpoint_dir, filename="interrupted"),
-        EpochProgressBar(),
+        EpochProgressBar(log_every=args.log_every),
     ]
     # Workers are deliberately 0 (see split_loader); silence Lightning's generic advice.
     warnings.filterwarnings("ignore", message=".*does not have many workers.*")
@@ -436,15 +478,17 @@ def main() -> None:
         # Replaced by EpochProgressBar: one bar for all epochs instead of one per epoch.
         enable_progress_bar=False,
     )
-    try:
-        trainer.fit(model, train_loader, val_loader, ckpt_path=args.resume)
-        # Periodic checkpoints only happen every --checkpoint-every epochs, so
-        # always save the final state as well.
-        trainer.save_checkpoint(os.path.join(checkpoint_dir, "last.ckpt"))
-    finally:
-        # Also runs when training is interrupted.
-        plot_training_curves(run_dir)
-        print(f"Model, logs and plots saved in {os.path.abspath(run_dir)}")
+    # Print log lines above the progress bar instead of breaking it.
+    with logging_redirect_tqdm():
+        try:
+            trainer.fit(model, train_loader, val_loader, ckpt_path=args.resume)
+            # Periodic checkpoints only happen every --checkpoint-every epochs, so
+            # always save the final state as well.
+            trainer.save_checkpoint(os.path.join(checkpoint_dir, "last.ckpt"))
+        finally:
+            # Also runs when training is interrupted.
+            plot_training_curves(run_dir)
+            logger.info("Model, logs and plots saved in %s", os.path.abspath(run_dir))
 
 
 if __name__ == "__main__":

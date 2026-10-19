@@ -20,17 +20,20 @@ from __future__ import annotations
 
 import argparse
 import itertools
+import logging
 import os
 from datetime import datetime, timezone
 
 import numpy as np
 import torch
-from tqdm.auto import tqdm
 
+from src.logging_utils import progress, setup_logging
 from src.ou_trajectories import generate_ou_trajectories, smooth_ou_trajectories
 from src.true_constitutive_law import KinematicHardeningPlasticity
 
 TEST_PATTERNS = ("tension_cycles", "tension_compression", "growing_tension_compression")
+
+logger = logging.getLogger(__name__)
 
 
 def stress_histories(
@@ -40,7 +43,7 @@ def stress_histories(
     stress_trajectories = np.empty_like(strain_trajectories)
     plastic_strain_trajectories = np.empty_like(strain_trajectories)
     for trajectory_index, strain_path in enumerate(
-        tqdm(strain_trajectories, desc=desc, unit="traj")
+        progress(strain_trajectories, desc=desc, unit="traj")
     ):
         plastic_strain, stress_path = kinematic_model.stress_history(
             strain_path[:, np.newaxis]
@@ -238,10 +241,12 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    # The log sits next to the dataset, e.g. datasets/kinematic_hardening_dataset.log.
+    setup_logging(os.path.splitext(args.output)[0] + ".log")
     dataset = build_dataset(args)
     os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
     torch.save(dataset, args.output)
-    print(f"Saved {dataset['metadata']['shapes']} to {args.output}")
+    logger.info("Saved %s to %s", dataset["metadata"]["shapes"], args.output)
 
 
 if __name__ == "__main__":

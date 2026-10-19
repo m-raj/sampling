@@ -211,8 +211,14 @@ def generate_ou_trajectories(
 
 
 if __name__ == "__main__":
+    import logging
+
+    from src.logging_utils import setup_logging
+
+    setup_logging()
+    logger = logging.getLogger(__name__)
     times, trajectories = generate_ou_trajectories(
         theta=2.0, mu=1.0, sigma=0.3, x0=0.0, seed=42
     )
-    print(f"Generated {len(trajectories)} trajectories over [0, {times[-1]}].")
-    print("Final values:", trajectories[:, -1])
+    logger.info("Generated %d trajectories over [0, %s].", len(trajectories), times[-1])
+    logger.info("Final values: %s", trajectories[:, -1])

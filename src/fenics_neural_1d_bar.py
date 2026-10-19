@@ -9,6 +9,7 @@ the trained ``VariationalODESolver`` from ``neural_variational_ode.py``.
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 
 import numpy as np
@@ -22,8 +23,11 @@ except ImportError as exc:  # pragma: no cover - depends on the local FEM stack
         "This solver requires legacy FEniCS/DOLFIN: install the fenics package."
     ) from exc
 
+from src.logging_utils import setup_logging
 from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
 from src.true_constitutive_law import TrueConstitutiveLaw
+
+logger = logging.getLogger(__name__)
 
 
 class NeuralConstitutiveLaw:
@@ -149,6 +153,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
+    setup_logging()
     if args.nodes < 3 or args.load_steps < 1:
         raise ValueError("--nodes must be at least 3 and --load-steps must be positive.")
     if args.constitutive_law == "neural" and not args.checkpoint.exists():
@@ -179,7 +184,7 @@ def main() -> None:
         strain=strain_history,
         stress=stress_history,
     )
-    print(f"Saved {len(loads)} load steps to {args.output}")
+    logger.info("Saved %d load steps to %s", len(loads), args.output)
 
 
 if __name__ == "__main__":

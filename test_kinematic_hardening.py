@@ -16,6 +16,7 @@ Figures (saved as PDF in the run's ``plots`` folder by default):
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 
 import matplotlib
@@ -24,7 +25,10 @@ import numpy as np
 import torch
 
 from train_kinematic_hardening import AdjointVariationalODE, run_dir_from_checkpoint
+from src.logging_utils import setup_logging
 from src.utilities import apply_plot_style, relative_l2_error, save_pdf
+
+logger = logging.getLogger(__name__)
 
 SPLITS = ("train", "validation", "test")
 # First three slots of the dataviz skill's validated categorical palette.
@@ -146,15 +150,16 @@ def main() -> None:
     apply_plot_style()
     output_dir = args.output_dir or os.path.join(run_dir_from_checkpoint(args.checkpoint), "plots")
     os.makedirs(output_dir, exist_ok=True)
+    setup_logging(os.path.join(output_dir, "test.log"))
 
     # The model type (potential or invertible) is restored from the checkpoint.
     model = AdjointVariationalODE.load_from_checkpoint(args.checkpoint, map_location="cpu")
     model.eval()
-    print(f"Model: {model.hparams.model} ({type(model.solver).__name__})")
+    logger.info("Model: %s (%s)", model.hparams.model, type(model.solver).__name__)
     dataset_path = args.dataset or model.hparams.get("dataset_path")
     if dataset_path is None:
         raise ValueError("Checkpoint does not record its dataset; pass --dataset.")
-    print(f"Dataset: {dataset_path}")
+    logger.info("Dataset: %s", dataset_path)
     dataset = torch.load(dataset_path, weights_only=False)
     dataset_dt = dataset["metadata"]["ou"]["dt"]
     if not np.isclose(model.hparams.dt, dataset_dt):
@@ -168,17 +173,20 @@ def main() -> None:
             dataset[split]["stress"], predictions[split], reduction="none"
         )
 
-    print(f"Relative L2 stress error ({args.checkpoint})")
-    print(f"{'split':<11}{'n':>4}{'mean':>11}{'median':>11}{'min':>11}{'max':>11}")
+    # Tables are logged as one multi-line message so their columns stay aligned.
+    table = [f"Relative L2 stress error ({args.checkpoint})",
+             f"{'split':<11}{'n':>4}{'mean':>11}{'median':>11}{'min':>11}{'max':>11}"]
     for split in SPLITS:
         e = errors[split]
-        print(f"{split:<11}{len(e):>4}{e.mean():>11.4e}{np.median(e):>11.4e}{e.min():>11.4e}{e.max():>11.4e}")
+        table.append(f"{split:<11}{len(e):>4}{e.mean():>11.4e}{np.median(e):>11.4e}{e.min():>11.4e}{e.max():>11.4e}")
+    logger.info("\n".join(table))
 
     programs = dataset["metadata"]["test"]["programs"]
     samples = representative_samples(errors["test"])
-    print("\nRepresentative test samples:")
+    table = ["Representative test samples:"]
     for name, index in samples.items():
-        print(f"  {name:<7}#{index:<3} error {errors['test'][index]:.4e}  {describe_program(programs[index], dataset['test']['strain'][index].numpy())}")
+        table.append(f"  {name:<7}#{index:<3} error {errors['test'][index]:.4e}  {describe_program(programs[index], dataset['test']['strain'][index].numpy())}")
+    logger.info("\n".join(table))
 
     times = dataset["times"].numpy()
     test_strain = dataset["test"]["strain"].numpy()
@@ -200,7 +208,7 @@ def main() -> None:
         **{f"{split}_errors": errors[split] for split in SPLITS},
         test_predicted_stress=predictions["test"],
     )
-    print(f"\nFigures and errors saved in {os.path.abspath(output_dir)}")
+    logger.info("Figures and errors saved in %s", os.path.abspath(output_dir))
 
 
 if __name__ == "__main__":

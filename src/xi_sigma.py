@@ -90,7 +90,13 @@ def compute_xi_and_sigma(
 
 
 if __name__ == "__main__":
+    import logging
+
+    from src.logging_utils import setup_logging
+
+    setup_logging()
+    logger = logging.getLogger(__name__)
     example_e = np.ones((2, 101))
     xi, sigma = compute_xi_and_sigma(example_e)
-    print("xi final values:", xi[:, -1])
-    print("sigma final values:", sigma[:, -1])
+    logger.info("xi final values: %s", xi[:, -1])
+    logger.info("sigma final values: %s", sigma[:, -1])
