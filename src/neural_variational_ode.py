@@ -23,9 +23,7 @@ class ReLUS(nn.Module):
         super().__init__()
 
     def forward(self, x: Tensor) -> Tensor:
-        return torch.where(
-            x >= 0, x**2, 0
-        )
+        return torch.where(x >= 0, x**2, torch.zeros_like(x))
 
 def _mlp(input_size: int, hidden_sizes: Sequence[int], bias: bool = True) -> nn.Sequential:
     """Create a scalar-output multilayer perceptron."""
@@ -47,7 +45,6 @@ class _PositiveLinear(nn.Module):
         self.bias = nn.Parameter(torch.empty(output_size))
         nn.init.xavier_uniform_(self.raw_weight)
         nn.init.zeros_(self.bias)
-        self.activation = ReLUS()
 
     def forward(self, x: Tensor) -> Tensor:
         return nn.functional.linear(
@@ -91,10 +88,11 @@ class InputConvexNetwork(nn.Module):
                 )
             previous_size = hidden_size
 
-        self.output_input = nn.Linear(input_size, 1, bias=False)
         self.output_state = (
             _PositiveLinear(previous_size, 1) if hidden_sizes else None
         )
+
+        self.activation = ReLUS()
 
     def forward(self, x: Tensor) -> Tensor:
         state: Tensor | None = None
@@ -106,11 +104,10 @@ class InputConvexNetwork(nn.Module):
                 state = input_part
             else:
                 state = input_part + state_layer(state)
-            state = torch.where(state >= 0, state**2, torch.zeros_like(state))
+            state = self.activation(state)
 
-        output = self.output_input(x)
         if state is not None and self.output_state is not None:
-            output = output + self.output_state(state)
+            output = self.output_state(state)
         return output.squeeze(-1)
 
 

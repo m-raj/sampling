@@ -22,6 +22,10 @@ The progress bar only appears in an interactive terminal; batch jobs such as
 SLURM get a log line every ``--log-every`` epochs instead.
 
 Resuming continues in the folder of the given checkpoint.
+
+With ``--pretrain``, a new run first fits the elastic, inelastic and
+dissipation networks to the quadratic potential 1/2 x^T x (or its gradient,
+the identity) on a ball of radius ``--pretrain-radius`` (``src/pretraining.py``).
 """
 
 from __future__ import annotations
@@ -56,6 +60,7 @@ from src.neural_variational_invertible_ode import (
     InvertibleVariationalODESolver,
 )
 from src.neural_variational_ode import Dissipation, Energy, VariationalODESolver
+from src.pretraining import pretrain_solver
 from src.utilities import apply_plot_style, relative_l2_error, save_pdf
 
 MODELS = ("potential", "invertible")
@@ -98,6 +103,7 @@ class AdjointVariationalODE(pl.LightningModule):
         dataset_path: str | None = None,
         dataset_metadata: dict | None = None,
         model: str = "potential",
+        pretraining: dict | None = None,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
@@ -408,6 +414,13 @@ def parse_args() -> argparse.Namespace:
         default=10,
         help="Log the training metrics (to the console and train.log) every N epochs.",
     )
+    parser.add_argument("--pretrain", action="store_true",
+                        help="Pretrain all networks on 1/2 x^T x (or the identity) before training. "
+                        "Ignored when resuming.")
+    parser.add_argument("--pretrain-radius", type=float, default=2.0,
+                        help="Radius of the ball the pretraining samples are drawn from.")
+    parser.add_argument("--pretrain-epochs", type=int, default=500)
+    parser.add_argument("--pretrain-lr", type=float, default=1e-2)
     parser.add_argument("--accelerator", default="cpu")
     parser.add_argument("--resume", default=None,
                         help="Checkpoint to continue from, e.g. runs/<run>/checkpoints/last.ckpt "
@@ -443,6 +456,12 @@ def main() -> None:
         saved = torch.load(args.resume, map_location="cpu", weights_only=False)["hyper_parameters"]
         model_type = saved.get("model", "potential")
         hidden_size = saved["hidden_size"]
+        pretraining = saved.get("pretraining")
+    else:
+        pretraining = (
+            dict(radius=args.pretrain_radius, epochs=args.pretrain_epochs, lr=args.pretrain_lr)
+            if args.pretrain else None
+        )
     model = AdjointVariationalODE(
         dt=metadata["ou"]["dt"],
         hidden_size=hidden_size,
@@ -450,7 +469,11 @@ def main() -> None:
         dataset_path=os.path.abspath(args.dataset),
         dataset_metadata=metadata,
         model=model_type,
+        pretraining=pretraining,
     )
+    # A resumed run loads its weights from the checkpoint, so it is never pretrained again.
+    if pretraining is not None and not args.resume:
+        pretrain_solver(model.solver, seed=args.seed, **pretraining)
 
     callbacks = [
         ModelCheckpoint(
