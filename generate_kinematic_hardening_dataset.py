@@ -4,7 +4,8 @@ Train and validation follow the following pipeline with the same OU parameters b
 different seeds:
 
 1. sample strain trajectories with an OU process,
-2. smooth them with the mollifier convolution,
+2. smooth them with the mollifier convolution, over a window of
+   ``--window-fraction`` times the OU correlation time 1/theta,
 3. compute plastic strain and stress with ``KinematicHardeningPlasticity``.
 
 The test set uses realistic piecewise-linear loading programs instead of
@@ -53,6 +54,20 @@ def stress_histories(
     return plastic_strain_trajectories, stress_trajectories
 
 
+def mollifier_window(args: argparse.Namespace) -> int:
+    """Smoothing window in samples: ``window_fraction / theta`` seconds, rounded to odd.
+
+    Scaling the window with the OU correlation time 1/theta makes smoothing
+    change every OU process by the same relative amount.
+    """
+    window = int(round(args.window_fraction / (args.theta * args.dt)))
+    if window % 2 == 0:
+        window += 1
+    n_times = int(np.floor(args.T / args.dt)) + 1
+    largest = n_times if n_times % 2 else n_times - 1
+    return min(max(window, 1), largest)
+
+
 def ou_split(args: argparse.Namespace, n_trajectories: int, seed: int) -> tuple[np.ndarray, dict]:
     """Sample and smooth OU strain paths with the shared OU parameters."""
     times, strain_trajectories = generate_ou_trajectories(
@@ -67,7 +82,7 @@ def ou_split(args: argparse.Namespace, n_trajectories: int, seed: int) -> tuple[
     )
     strain_trajectories_smooth = smooth_ou_trajectories(
         strain_trajectories,
-        window_size=args.mollifier_window,
+        window_size=mollifier_window(args),
     )
     return times, {"strain_raw": strain_trajectories, "strain": strain_trajectories_smooth}
 
@@ -190,7 +205,10 @@ def build_dataset(args: argparse.Namespace) -> dict:
             "seed": args.seed,
             "val_seed": args.val_seed,
         },
-        "smoothing": {"mollifier_window": args.mollifier_window},
+        "smoothing": {
+            "window_fraction": args.window_fraction,
+            "mollifier_window": mollifier_window(args),
+        },
         "test": test_metadata,
         "constitutive_model": {
             "name": "KinematicHardeningPlasticity",
@@ -211,7 +229,14 @@ def build_dataset(args: argparse.Namespace) -> dict:
     return dataset
 
 
-def parse_args() -> argparse.Namespace:
+def _positive_float(text: str) -> float:
+    value = float(text)
+    if value <= 0:
+        raise argparse.ArgumentTypeError("must be positive")
+    return value
+
+
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--output", default="datasets/kinematic_hardening_dataset.pt")
     # OU process (shared by train and validation).
@@ -226,7 +251,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--val-seed", type=int, default=43)
     # Smoothing.
-    parser.add_argument("--mollifier-window", type=int, default=601)
+    parser.add_argument("--window-fraction", type=_positive_float, default=0.15, metavar="F",
+                        help="Smoothing window width as a fraction of the OU correlation "
+                        "time 1/theta (default 0.15: 601 samples at theta=3, dt=1/12000).")
     # Test loading programs, as fractions of the training strain and rate scales.
     parser.add_argument("--test-tension-fractions", type=float, nargs="+", default=[0.5, 1.0])
     parser.add_argument("--test-compression-fractions", type=float, nargs="+", default=[0.5, 1.0])
@@ -236,17 +263,24 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--H", type=float, default=1.0)
     parser.add_argument("--sigma-y", type=float, default=0.5)
     parser.add_argument("--rate-exponent", type=float, default=0.5)
-    return parser.parse_args()
+    return parser
+
+
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
+    return build_parser().parse_args(argv)
+
+
+def save_dataset(dataset: dict, path: str) -> None:
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    torch.save(dataset, path)
+    logger.info("Saved %s to %s", dataset["metadata"]["shapes"], path)
 
 
 def main() -> None:
     args = parse_args()
     # The log sits next to the dataset, e.g. datasets/kinematic_hardening_dataset.log.
     setup_logging(os.path.splitext(args.output)[0] + ".log")
-    dataset = build_dataset(args)
-    os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
-    torch.save(dataset, args.output)
-    logger.info("Saved %s to %s", dataset["metadata"]["shapes"], args.output)
+    save_dataset(build_dataset(args), args.output)
 
 
 if __name__ == "__main__":
