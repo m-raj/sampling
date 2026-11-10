@@ -76,6 +76,19 @@ def latest_checkpoint(run_dir: str) -> str | None:
     return max(candidates, key=os.path.getmtime) if candidates else None
 
 
+def find_checkpoint(run_dir: str, checkpoint_name: str) -> str | None:
+    """Checkpoint ``checkpoint_name`` of a run, or its best one for ``"best"``.
+
+    ``best-epoch=N.ckpt`` is only written when the validation error improves,
+    so if several exist the most recently written is the best.
+    """
+    if checkpoint_name == "best":
+        candidates = glob.glob(os.path.join(run_dir, "checkpoints", "best-*.ckpt"))
+        return max(candidates, key=os.path.getmtime) if candidates else None
+    path = os.path.join(run_dir, "checkpoints", checkpoint_name)
+    return path if os.path.exists(path) else None
+
+
 def completed_epochs(checkpoint_path: str) -> int:
     """Number of epochs fully trained when the checkpoint was saved."""
     import torch
@@ -220,8 +233,8 @@ def submit_evaluation(args: argparse.Namespace, entries: list[dict]) -> None:
         name = dataset_name(entry)
         print(f"{name}:", end=" ")
         run_dir = latest_run(os.path.join(args.runs_dir, name))
-        if run_dir is None or not os.path.exists(os.path.join(run_dir, "checkpoints", args.checkpoint_name)):
-            print(f"no {args.checkpoint_name} yet, skipping")
+        if run_dir is None or find_checkpoint(run_dir, args.checkpoint_name) is None:
+            print(f"no {args.checkpoint_name} checkpoint yet, skipping")
             continue
         if name in busy:
             print("job still queued or running, skipping")
@@ -268,7 +281,9 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
         "evaluate", parents=[shared], allow_abbrev=False,
         help="Evaluate every trained model on all datasets.",
     )
-    evaluate.add_argument("--checkpoint-name", default="last.ckpt")
+    evaluate.add_argument("--checkpoint-name", default="last.ckpt",
+                          help="Checkpoint file to evaluate, or 'best' for each run's "
+                          "best-epoch=N.ckpt (lowest validation error).")
     evaluate.add_argument("--force", action="store_true",
                           help="Re-evaluate models that already have results.")
 

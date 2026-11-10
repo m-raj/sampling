@@ -2,18 +2,21 @@
 
 ``--model-name NAME`` (one job per model, see ``submit_ou_sweep.py evaluate``)
 loads the newest run of the model trained on dataset ``NAME`` and computes
-the relative L2-in-time stress error of every trajectory in the validation
-and test splits of every sweep dataset. The errors are saved to
+the relative L2-in-time stress error of every trajectory in the train,
+validation and test splits of every sweep dataset. The errors are saved to
 ``<runs-dir>/cross_eval/NAME.npz`` under keys ``<dataset>__<split>``.
 
 ``--collect`` combines all saved results into
 
 - ``summary.csv``: mean and median error for every (trained on, evaluated on,
   split), in long format,
-- ``heatmap_validation.pdf`` and ``heatmap_test.pdf``: median error with rows
-  the training dataset and columns the evaluation dataset, both ordered by
-  (theta, sigma). The diagonal (evaluated on its own dataset) is outlined and
-  missing models are left blank.
+- ``heatmap_<split>.pdf``: median error with rows the training dataset and
+  columns the evaluation dataset, both ordered by (theta, sigma). The
+  diagonal (evaluated on its own dataset) is outlined and missing models are
+  left blank.
+- ``own_error_vs_sigma.pdf`` and ``own_error_vs_theta.pdf``: mean error of
+  every model on its own dataset, one panel per split. The first has sigma on
+  the x-axis and one line per theta, the second the other way round.
 """
 
 from __future__ import annotations
@@ -29,16 +32,18 @@ import pandas as pd
 import torch
 from matplotlib.colors import LogNorm
 from matplotlib.patches import Rectangle
+from matplotlib.ticker import FuncFormatter, LogLocator
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from src.logging_utils import setup_logging
-from src.utilities import apply_plot_style, relative_l2_error, save_pdf
-from submit_ou_sweep import dataset_name, latest_run, load_index
+from src.utilities import apply_plot_style, relative_l2_error
+from submit_ou_sweep import dataset_name, find_checkpoint, latest_run, load_index
 from test_kinematic_hardening import predict_stress
 from train_kinematic_hardening import AdjointVariationalODE
 
 logger = logging.getLogger(__name__)
 
-SPLITS = ("validation", "test")
+SPLITS = ("train", "validation", "test")
 
 
 def sorted_entries(index: dict) -> list[dict]:
@@ -53,7 +58,9 @@ def evaluate_model(args: argparse.Namespace) -> None:
     run_dir = latest_run(os.path.join(args.runs_dir, args.model_name))
     if run_dir is None:
         raise FileNotFoundError(f"No run for {args.model_name} in {args.runs_dir}.")
-    checkpoint = os.path.join(run_dir, "checkpoints", args.checkpoint_name)
+    checkpoint = find_checkpoint(run_dir, args.checkpoint_name)
+    if checkpoint is None:
+        raise FileNotFoundError(f"No {args.checkpoint_name} checkpoint in {run_dir}/checkpoints.")
 
     output_dir = os.path.join(args.runs_dir, "cross_eval")
     os.makedirs(output_dir, exist_ok=True)
@@ -98,7 +105,9 @@ def heatmap(matrix: np.ndarray, entries: list[dict], split: str) -> plt.Figure:
     finite = matrix[np.isfinite(matrix) & (matrix > 0)]
     norm = LogNorm(vmin=finite.min(), vmax=finite.max()) if finite.size else None
     image = ax.imshow(np.ma.masked_invalid(matrix), cmap="viridis", norm=norm)
-    colorbar = fig.colorbar(image, ax=ax, fraction=0.046, pad=0.02)
+    # A colorbar axis of the same height as the heatmap.
+    colorbar_axis = make_axes_locatable(ax).append_axes("right", size="3%", pad=0.15)
+    colorbar = fig.colorbar(image, cax=colorbar_axis)
     colorbar.set_label(rf"Median relative $L^2$ stress error ({split})")
     for i in range(count):
         ax.add_patch(Rectangle((i - 0.5, i - 0.5), 1, 1, fill=False, edgecolor="white", linewidth=1.5))
@@ -112,6 +121,58 @@ def heatmap(matrix: np.ndarray, entries: list[dict], split: str) -> plt.Figure:
     return fig
 
 
+def own_error_figure(
+    own_errors: dict[str, dict[tuple[float, float], float]],
+    thetas: list[float],
+    sigmas: list[float],
+    x_name: str,
+) -> plt.Figure:
+    """Error of every model on its own dataset, one panel per split.
+
+    ``own_errors[split][(theta, sigma)]`` is the error of the model trained on
+    (theta, sigma). With ``x_name="sigma"`` each line is one theta and the
+    x-axis is sigma; with ``x_name="theta"`` the other way round.
+    """
+    x_values, line_values = (sigmas, thetas) if x_name == "sigma" else (thetas, sigmas)
+    line_name = "theta" if x_name == "sigma" else "sigma"
+    colors = plt.cm.viridis(np.linspace(0.0, 0.9, len(line_values)))
+    splits = list(own_errors)
+    fig, axes = plt.subplots(1, len(splits), figsize=(5.2 * len(splits), 4.6),
+                             sharey=True, squeeze=False)
+    for axis, split in zip(axes[0], splits):
+        for color, line_value in zip(colors, line_values):
+            keys = [(line_value, x) if x_name == "sigma" else (x, line_value) for x in x_values]
+            y = np.array([own_errors[split].get(key, np.nan) for key in keys])
+            axis.plot(x_values, y, marker="o", markersize=5, color=color,
+                      label=rf"$\{line_name}={line_value:.3g}$")
+        axis.set_xscale("log")
+        axis.set_yscale("log")
+        axis.set_xticks(x_values, [f"{x:.3g}" for x in x_values])
+        axis.minorticks_off()
+        # Errors span about one decade, so label 1-2-5 steps, not just powers of ten.
+        axis.yaxis.set_major_locator(LogLocator(subs=(1.0, 2.0, 5.0)))
+        axis.yaxis.set_major_formatter(FuncFormatter(lambda value, _: f"{value:g}"))
+        axis.set_xlabel(rf"$\{x_name}$")
+        axis.set_title(split)
+        axis.grid(alpha=0.2, which="both")
+    axes[0, 0].set_ylabel(r"Mean relative $L^2$ stress error")
+    axes[0, -1].legend(loc="center left", bbox_to_anchor=(1.02, 0.5))
+    fig.tight_layout()
+    return fig
+
+
+def save_own_error_plots(
+    own_errors: dict[str, dict[tuple[float, float], float]],
+    thetas: list[float],
+    sigmas: list[float],
+    output_dir: str,
+) -> None:
+    for x_name in ("sigma", "theta"):
+        fig = own_error_figure(own_errors, thetas, sigmas, x_name)
+        fig.savefig(os.path.join(output_dir, f"own_error_vs_{x_name}.pdf"), bbox_inches="tight")
+        plt.close(fig)
+
+
 def collect(args: argparse.Namespace) -> None:
     output_dir = os.path.join(args.runs_dir, "cross_eval")
     setup_logging(os.path.join(output_dir, "collect.log"))
@@ -120,6 +181,7 @@ def collect(args: argparse.Namespace) -> None:
 
     rows, missing = [], []
     matrices = {split: np.full((len(names), len(names)), np.nan) for split in SPLITS}
+    own_means = {split: {} for split in SPLITS}
     for i, (model_name, model_entry) in enumerate(zip(names, entries)):
         path = os.path.join(output_dir, f"{model_name}.npz")
         if not os.path.exists(path):
@@ -133,6 +195,8 @@ def collect(args: argparse.Namespace) -> None:
                     continue
                 errors = results[key]
                 matrices[split][i, j] = np.median(errors)
+                if i == j:
+                    own_means[split][(model_entry["theta"], model_entry["sigma"])] = errors.mean()
                 rows.append({
                     "train_dataset": model_name, "train_theta": model_entry["theta"],
                     "train_sigma": model_entry["sigma"],
@@ -149,11 +213,21 @@ def collect(args: argparse.Namespace) -> None:
     pd.DataFrame(rows).to_csv(os.path.join(output_dir, "summary.csv"), index=False)
     apply_plot_style()
     for split, matrix in matrices.items():
-        save_pdf(heatmap(matrix, entries, split), os.path.join(output_dir, f"heatmap_{split}.pdf"))
+        if np.isnan(matrix).all():
+            logger.warning("No %s errors in the results; skipping its plots.", split)
+            continue
+        # Not save_pdf: it makes every axis square, which would squash the colorbar.
+        fig = heatmap(matrix, entries, split)
+        fig.savefig(os.path.join(output_dir, f"heatmap_{split}.pdf"), bbox_inches="tight")
+        plt.close(fig)
+    thetas = sorted({entry["theta"] for entry in entries})
+    sigmas = sorted({entry["sigma"] for entry in entries})
+    save_own_error_plots({split: means for split, means in own_means.items() if means},
+                         thetas, sigmas, output_dir)
     diagonal = np.diag(matrices["test"])
     logger.info("Median test error on own dataset: %s",
                 ", ".join(f"{n} {e:.3e}" for n, e in zip(names, diagonal) if np.isfinite(e)))
-    logger.info("Wrote summary.csv and heatmaps to %s", os.path.abspath(output_dir))
+    logger.info("Wrote summary.csv, heatmaps and own-error plots to %s", os.path.abspath(output_dir))
 
 
 def parse_args() -> argparse.Namespace:
@@ -163,7 +237,9 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--collect", action="store_true", help="Combine all saved results.")
     parser.add_argument("--sweep-dir", default="datasets/ou_sweep")
     parser.add_argument("--runs-dir", default="runs/ou_sweep")
-    parser.add_argument("--checkpoint-name", default="last.ckpt")
+    parser.add_argument("--checkpoint-name", default="last.ckpt",
+                        help="Checkpoint file to evaluate, or 'best' for the run's "
+                        "best-epoch=N.ckpt (lowest validation error).")
     parser.add_argument("--batch-size", type=int, default=64)
     return parser.parse_args()
 

@@ -856,6 +856,275 @@ The above constitutive law can be solved by
     \item Code for branching process and adjoint method of optimization
     \item Try Lagrange multiplier method of constraint for optimization. How would optimization work in Lagrange multiplier framework?
 \end{itemize}
+
+\section{Strain rate of smoothed OU paths and the stable time step}
+\label{sec:strain-rate-dt}
+
+The training data for the kinematic-hardening model
+(Appendix~\ref{a:sec:kinematic-hardening}) are produced in three steps:
+an OU strain path is sampled, smoothed with a mollifier, and the stress is
+computed by integrating the flow rule with the forward Euler method on the
+same time grid $\Delta t$. This section relates the strain rate of the
+smoothed paths to the OU parameters $(\theta,\sigma)$, and the largest stable
+$\Delta t$ to the strain rate. Throughout this section $\sigma$ denotes the OU
+diffusion coefficient; the stress is written out as
+$E(\varepsilon-\varepsilon^p)$.
+
+\subsection{Smoothing of the OU path}
+The strain follows the OU process
+\begin{equation}
+    d\varepsilon = \theta(\mu-\varepsilon)\,dt + \sigma\,dW .
+\end{equation}
+Its paths are not differentiable: an increment over $\Delta t$ has standard
+deviation $\sigma\sqrt{\Delta t}$, so the finite-difference rate
+$\Delta\varepsilon/\Delta t\sim\sigma/\sqrt{\Delta t}$ grows without bound as
+$\Delta t\to 0$. A finite strain rate is obtained only after smoothing. The
+path is convolved with the kernel
+\begin{equation}
+    K_w(t) = \frac{2}{wZ}\,\varphi\!\left(\frac{2t}{w}\right),
+    \qquad
+    \varphi(x) =
+    \begin{cases}
+        e^{-1/(1-x^2)}, & |x|<1,     \\
+        0,              & |x|\geq 1,
+    \end{cases}
+    \qquad
+    Z=\int_{-1}^{1}\varphi(x)\,dx \approx 0.444,
+\end{equation}
+which integrates to one and has support $[-w/2,\,w/2]$. The window is
+proportional to the OU correlation time $1/\theta$,
+\begin{equation}
+    w = \frac{c}{\theta}, \qquad c = 0.15 \;(\texttt{--window-fraction}),
+\end{equation}
+so every path is smoothed by the same relative amount. The smoothed strain is
+$\tilde\varepsilon = K_w * \varepsilon$.
+
+\subsection{Strain rate in terms of \texorpdfstring{$\theta$}{theta} and \texorpdfstring{$\sigma$}{sigma}}
+\label{sec:strain-rate-ou}
+
+\paragraph{Dimensional argument.}
+$\theta$ has units of $1/\mathrm{s}$ and, since $dW$ has units of
+$\sqrt{\mathrm{s}}$, $\sigma$ has units of strain$/\sqrt{\mathrm{s}}$. The
+window $w=c/\theta$ introduces only the dimensionless number $c$. The only
+combination of $\theta$ and $\sigma$ with units of a strain rate is
+$\sigma\sqrt{\theta}$, so every statistic of the smoothed strain rate has the
+form (dimensionless constant)$\times\sigma\sqrt{\theta}$.
+
+\paragraph{Derivation.}
+Differentiating the convolution and integrating by parts ($K_w$ vanishes at
+the ends of its support) moves the derivative onto the increments of
+$\varepsilon$:
+\begin{align}
+    \dot{\tilde\varepsilon}(t)
+     & = \int K_w'(t-s)\,\varepsilon(s)\,ds
+    = \int K_w(t-s)\,d\varepsilon(s) \nonumber                                             \\
+     & = \underbrace{\theta\int K_w(t-s)\bigl(\mu-\varepsilon(s)\bigr)\,ds}_{\text{drift}}
+    + \underbrace{\sigma\int K_w(t-s)\,dW(s)}_{\text{noise}} .
+\end{align}
+The smoothed strain rate is therefore a weighted average of the increments
+that drive the OU process over one window.
+
+The noise term is Gaussian with zero mean. By the It\^o isometry its
+variance is
+\begin{equation}
+    \sigma^2\int K_w(t)^2\,dt = \frac{\sigma^2 C}{w},
+    \qquad
+    C = \frac{2\int_{-1}^{1}\varphi^2\,dx}{\bigl(\int_{-1}^{1}\varphi\,dx\bigr)^2}\approx 1.350 .
+\end{equation}
+Averaging white noise over a window of length $w$ reduces its standard
+deviation like $1/\sqrt{w}$, in the same way that averaging $N$ independent
+samples reduces it by $\sqrt{N}$. With $w=c/\theta$,
+\begin{equation}
+    \operatorname{RMS}(\text{noise})
+    = \sigma\sqrt{\frac{C\theta}{c}}
+    \approx 3.00\,\sigma\sqrt{\theta}.
+\end{equation}
+The factor $\sigma$ sets the size of every noise increment, and
+$\sqrt{\theta}$ enters through $1/\sqrt{w}$ because the window narrows as
+$\theta$ grows.
+
+The drift term is $\theta$ times the smoothed distance from the mean, which
+fluctuates with the stationary standard deviation $\sigma/\sqrt{2\theta}$:
+\begin{equation}
+    \operatorname{RMS}(\text{drift}) \approx \theta\,\frac{\sigma}{\sqrt{2\theta}}
+    = \frac{\sigma\sqrt{\theta}}{\sqrt{2}} \approx 0.71\,\sigma\sqrt{\theta}.
+\end{equation}
+It has the same scaling but is about four times smaller: the ratio of the two
+contributions is $\sqrt{c/(2C)}\approx 0.24$, independent of $\theta$ and
+$\sigma$.
+
+\paragraph{Result.}
+\begin{equation}
+    \operatorname{RMS}(\dot{\tilde\varepsilon}) \approx 2.9\,\sigma\sqrt{\theta},
+    \qquad
+    \max|\dot{\tilde\varepsilon}| \approx 11.5\,\sigma\sqrt{\theta}.
+    \label{eq:strain-rate-ou}
+\end{equation}
+The measured RMS constant is $2.87$--$2.89$ on all 25 datasets
+($\theta\in\{1,\dots,5\}$, $\sigma\in[0.5,2]$), slightly below the noise-only
+value $3.00$ because the drift is negatively correlated with the noise (it
+pulls back what the noise pushes) and because the paths start at
+$\varepsilon=0$. The maximum is taken over 64 trajectories with 12\,001
+time points each; for this many roughly Gaussian values it lies about four
+standard deviations out. The fitted constant $11.5$ predicts the maximum
+rate of every dataset to within a few percent.
+
+Larger $\theta$ therefore gives smaller strains (stationary standard
+deviation $\sigma/\sqrt{2\theta}$) that change faster. This is a consequence
+of scaling the window with $1/\theta$: with a fixed window $w$ the rate would
+be $\approx\sigma\sqrt{C/w}$, independent of $\theta$.
+
+\subsection{Stiffness of the flow rule and forward Euler stability}
+With $\xi=\varepsilon^p$ and the overstress
+\begin{equation}
+    q = \frac{E(\varepsilon-\xi) - H\xi}{\sigma_y},
+\end{equation}
+the kinematic-hardening flow rule is
+\begin{equation}
+    \dot\xi = f(\varepsilon,\xi) = |q|^{1/m}\operatorname{sign}(q).
+\end{equation}
+Since $\partial q/\partial\xi = -(E+H)/\sigma_y$, the relaxation rate
+(stiffness) is
+\begin{equation}
+    k = -\frac{\partial f}{\partial\xi}
+    = \frac{1}{m}\,|q|^{1/m-1}\,\frac{E+H}{\sigma_y} > 0 .
+\end{equation}
+At fixed $\varepsilon$, $\xi$ relaxes towards the value $\xi^*$ with
+$f(\varepsilon,\xi^*)=0$ (elastic stress balancing the back stress), and
+near it $\dot\xi\approx -k(\xi-\xi^*)$. The forward Euler update
+$\xi_{n+1}=\xi_n+\Delta t\,f(\varepsilon_{n+1},\xi_n)$ maps a perturbation
+$\delta_n$ of $\xi_n$ to
+\begin{equation}
+    \delta_{n+1} = \bigl(1+\Delta t\,\partial_\xi f\bigr)\,\delta_n
+    = (1-k\Delta t)\,\delta_n ,
+\end{equation}
+which holds along any trajectory, not only near $\xi^*$. The exact factor
+over one step is $e^{-k\Delta t}$; forward Euler replaces it by its first
+order approximation $1-k\Delta t$. Perturbations decay only if
+$|1-k\Delta t|<1$, that is
+\begin{equation}
+    k\,\Delta t < 2 .
+\end{equation}
+For $1<k\Delta t<2$ the iterates overshoot $\xi^*$ but the overshoot
+shrinks; for $k\Delta t>2$ it grows by the factor $|1-k\Delta t|>1$ every
+step. In single precision ($\approx 2^{128}$) this overflows after roughly
+$128/\log_2|1-k\Delta t|$ steps, e.g.\ about 120 steps (0.01\,s) for
+$k\Delta t=3.1$, after which the stress and the loss become NaN.
+
+\subsection{Relation between \texorpdfstring{$\Delta t$}{dt} and the strain rate}
+\label{sec:dt-strain-rate}
+
+The stability limit is $\Delta t_{\max}=2/k$, which depends on the
+overstress $q$. During plastic loading the elastic strain
+$\varepsilon-\xi=\sigma_{\text{stress}}/E$ is small (about $10^{-3}$ for
+$E=1000$), so $\xi$ follows $\varepsilon$ and $\dot\xi\approx\dot\varepsilon$.
+Substituting into the flow rule,
+\begin{equation}
+    |q|^{1/m} = |\dot\xi| \approx |\dot\varepsilon|
+    \quad\Longrightarrow\quad
+    |q|\approx|\dot\varepsilon|^{m},
+    \qquad
+    |q|^{1/m-1}\approx|\dot\varepsilon|^{1-m}.
+\end{equation}
+Hence
+\begin{equation}
+    k \approx \frac{1}{m}\,\frac{E+H}{\sigma_y}\,|\dot\varepsilon|^{1-m},
+    \qquad
+    \boxed{\;\Delta t_{\max} \approx \frac{2m\,\sigma_y}{(E+H)\,|\dot\varepsilon|_{\max}^{\,1-m}}\;}
+    \label{eq:dt-strain-rate}
+\end{equation}
+where the maximum strain rate is used because the step must be stable
+everywhere. In a rate-dependent material, faster loading requires a larger
+overstress, and for $m<1$ the flow rule is steeper at larger overstress, so
+the stiffness increases and the stable step decreases. The exponent $1-m$
+measures this dependence:
+\begin{itemize}
+    \item $m=1$ (linear viscous): $\Delta t_{\max}=2\sigma_y/(E+H)$, independent of the strain rate;
+    \item $m=1/2$: $\Delta t_{\max}\propto|\dot\varepsilon|_{\max}^{-1/2}$;
+    \item $m\to 0$ (rate-independent limit): $\Delta t_{\max}\propto|\dot\varepsilon|_{\max}^{-1}$.
+\end{itemize}
+
+Combining \eqref{eq:dt-strain-rate} with \eqref{eq:strain-rate-ou} gives the
+stable step directly in terms of the OU parameters:
+\begin{equation}
+    \Delta t_{\max}(\theta,\sigma) \approx
+    \frac{2m\,\sigma_y}{(E+H)\,\bigl(11.5\,\sigma\sqrt{\theta}\bigr)^{1-m}} .
+\end{equation}
+For the parameters used in the sweep ($E=1000$, $H=1$, $\sigma_y=0.5$,
+$m=0.5$) this is
+\begin{equation}
+    k \approx 4004\sqrt{|\dot\varepsilon|},
+    \qquad
+    \Delta t_{\max} \approx \frac{5.0\times10^{-4}}{\sqrt{|\dot\varepsilon|_{\max}}}
+    \approx \frac{1.5\times10^{-4}}{\sqrt{\sigma\sqrt{\theta}}}\ \mathrm{s}.
+\end{equation}
+
+\paragraph{Comparison with the data.}
+Table~\ref{tab:dt-strain-rate} compares the predicted stiffness with the
+largest value of $k$ along the training trajectories, computed from the true
+law. The prediction is accurate to within one percent at moderate rates. At
+the highest rates the measured stiffness is up to 37\% larger: the plastic
+flow lags behind fast changes of the strain, so $\dot\xi\approx\dot\varepsilon$
+no longer holds and $q$ temporarily exceeds its steady value, and the
+forward Euler overshoot (these datasets already have $k\Delta t>2$) inflates
+$q$ further. Equation~\eqref{eq:dt-strain-rate} should therefore be read as
+an upper bound on $\Delta t$ and used with a safety factor.
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{cc r rr rr}
+        \toprule
+        $\theta$ & $\sigma$                                  & $\max|\dot\varepsilon|$
+                 & \multicolumn{2}{c}{$k$ (1/s)}
+                 & \multicolumn{2}{c}{$\Delta t_{\max}$ (s)}                                                                                              \\
+        \cmidrule(lr){4-5}\cmidrule(lr){6-7}
+                 &                                           & (1/s)                   & predicted & measured & predicted           & measured            \\
+        \midrule
+        1        & 0.5                                       & 6.0                     & 9\,775    & 9\,770   & $2.05\times10^{-4}$ & $2.05\times10^{-4}$ \\
+        3        & 0.5                                       & 9.8                     & 12\,547   & 12\,538  & $1.59\times10^{-4}$ & $1.60\times10^{-4}$ \\
+        5        & 1                                         & 25.7                    & 20\,286   & 20\,276  & $9.86\times10^{-5}$ & $9.86\times10^{-5}$ \\
+        1        & 2                                         & 23.8                    & 19\,551   & 21\,273  & $1.02\times10^{-4}$ & $9.40\times10^{-5}$ \\
+        3        & 2                                         & 39.3                    & 25\,094   & 29\,888  & $7.97\times10^{-5}$ & $6.69\times10^{-5}$ \\
+        5        & 2                                         & 51.3                    & 28\,689   & 39\,385  & $6.97\times10^{-5}$ & $5.08\times10^{-5}$ \\
+        \bottomrule
+    \end{tabular}
+    \caption{Stiffness of the true kinematic-hardening law and the largest
+        stable forward Euler step, predicted by \eqref{eq:dt-strain-rate} from
+        the maximum strain rate and measured along the training trajectories
+        ($E=1000$, $H=1$, $\sigma_y=0.5$, $m=0.5$).}
+    \label{tab:dt-strain-rate}
+\end{table}
+
+\paragraph{Consequences for the sweep.}
+With the current step $\Delta t = 8.33\times10^{-5}$\,s the largest value of
+$k\Delta t$ on the training trajectories exceeds 2 for
+$(\theta,\sigma)=(3,2),(4,2),(5,1.41),(5,2)$ (up to $0.7\%$ of the steps), so
+the generated stresses of these datasets are themselves affected by the
+instability; in the earlier sweep the dataset $\theta=10$, $\sigma=2$
+($\max|\dot\varepsilon|\approx 71$\,1/s, $k\Delta t\approx 4$) showed
+visible stress spikes. The learned model is integrated with the same
+forward Euler step and can be stiffer than the true law, which is why
+training runs diverge to NaN once the largest $k\Delta t$ along a trajectory
+crosses 2. A margin of $k\Delta t\lesssim 1$ for the true law, which also
+keeps forward Euler reasonably accurate, requires
+\begin{center}
+    \begin{tabular}{lcc}
+        \toprule
+        Target                 & $\Delta t$ for $\theta\le5$, $\sigma\le2$ & steps for $T=1$\,s \\
+        \midrule
+        $k\Delta t<2$ (stable) & $5\times10^{-5}$                          & 20\,000            \\
+        $k\Delta t\le1$        & $2.5\times10^{-5}$                        & 40\,000            \\
+        $k\Delta t\le0.5$      & $1.25\times10^{-5}$                       & 80\,000            \\
+        \bottomrule
+    \end{tabular}
+\end{center}
+The cost of training grows like $1/\Delta t$. Alternatively, an
+unconditionally stable integrator (backward Euler, whose amplification factor
+$1/(1+k\Delta t)$ is below one for every $k\Delta t>0$) removes the
+restriction, so that $\Delta t$ only needs to resolve the smoothed strain
+path; the smoothing window $w=0.15/\theta$ spans at least 360 steps at the
+current $\Delta t$.
+
 \appendix
 \section{FEniCS solver with the learned neural constitutive law}
 \label{a:sec:fenics-neural-bar}
@@ -1618,6 +1887,7 @@ Iterative solver is
 |\Delta \varepsilon^p_n|^{(k+1)} = \left( \Delta t \left( E|\varepsilon_{n+1}-\varepsilon^p_n |- H \xi_n - (H+E) |\Delta \varepsilon^p_n|^{(k)} \right) \right)^{\frac{1}{m}}
 \end{align}
 \subsection{Kinematic Hardening}
+\label{a:sec:kinematic-hardening}
 \begin{align}
 \mathcal{W}(\varepsilon, \varepsilon^p) &= \dfrac{E}{2}(\varepsilon - \varepsilon^p)^2 + \dfrac{H}{2}(\varepsilon^p)^2\\
 \mathcal{D}(\dot{\varepsilon}^p) &= \dfrac{\sigma_y}{m+1}|\dot{\varepsilon}^p|^{1+m}
