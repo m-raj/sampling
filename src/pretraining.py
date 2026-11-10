@@ -146,7 +146,7 @@ class ICNNPretrainer(_BallPretrainer):
 
     @property
     def input_dim(self) -> int:
-        return self.network.output_input.in_features
+        return self.network.input_layers[0].in_features
 
     def target(self, x: Tensor) -> Tensor:
         return 0.5 * (x * x).sum(-1)
